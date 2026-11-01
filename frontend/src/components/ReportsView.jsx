@@ -123,6 +123,37 @@ export default function ReportsView({
 
   const activeCaseObj = cases.find(c => c.case_ref === selectedCaseRef);
 
+  // Parse structured dossier sections to prevent monolithic text page-cutting
+  const sections = activeReport ? (() => {
+    if (activeReport.forensic_findings && activeReport.conclusions) {
+      return {
+        summary: activeReport.executive_summary || 'Executive intake record and initial dossier notes.',
+        lutkin: activeReport.forensic_findings,
+        vanguard: activeReport.intel_summary || '',
+        cortex: activeReport.anomaly_detection || '',
+        apex: activeReport.defense_critique || '',
+        argus: activeReport.conclusions
+      };
+    }
+    const text = activeReport.full_report_text || '';
+    const extract = (startHeading, endHeading) => {
+      const parts = text.split(startHeading);
+      if (parts.length < 2) return '';
+      const sub = parts[1];
+      const raw = endHeading ? sub.split(endHeading)[0] : sub;
+      return raw.replace(/^[=\-\s]+/, '').replace(/[=\-\s]+$/, '').trim();
+    };
+
+    return {
+      summary: extract('1. EXECUTIVE SUMMARY & INTAKE RECORD', '2. FORENSIC INTELLIGENCE ASSESSMENT') || activeReport.executive_summary || text,
+      lutkin: extract('2. FORENSIC INTELLIGENCE ASSESSMENT', '3. FIELD INTELLIGENCE & OSINT DOSSIER'),
+      vanguard: extract('3. FIELD INTELLIGENCE & OSINT DOSSIER', '4. ANALYTICAL ANOMALY & LINK GRAPH MATRIX'),
+      cortex: extract('4. ANALYTICAL ANOMALY & LINK GRAPH MATRIX', '5. ADVERSARIAL REVIEW & RED-TEAM AUDIT'),
+      apex: extract('5. ADVERSARIAL REVIEW & RED-TEAM AUDIT', '6. CHIEF INVESTIGATION OFFICER OFFICIAL VERDICT'),
+      argus: extract('6. CHIEF INVESTIGATION OFFICER OFFICIAL VERDICT', 'OFFICIAL BUREAU CERTIFICATION') || activeReport.conclusions
+    };
+  })() : null;
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#100d0a]">
       
@@ -243,9 +274,121 @@ export default function ReportsView({
               </div>
             </div>
 
-            {/* Structured Report Text */}
-            <div className="whitespace-pre-wrap text-xs md:text-sm leading-relaxed text-[#2c1c11] font-elite space-y-4">
-              {activeReport.full_report_text}
+            {/* Structured Report Sections (Page-Break Protected) */}
+            <div className="space-y-4 font-elite text-xs md:text-sm text-[#2c1c11]">
+              {/* Section 1: Executive Summary */}
+              {sections?.summary && (
+                <div className="dossier-section">
+                  <div className="dossier-section-title flex items-center justify-between border-b border-[#9c764e] pb-1.5 mb-2.5">
+                    <h3 className="font-rye text-xs md:text-sm text-[#3d2412]">
+                      1. EXECUTIVE SUMMARY & CASE INTAKE RECORD
+                    </h3>
+                    <span className="text-[9px] font-elite px-2 py-0.5 rounded bg-[#4d2f19] text-[#f7e4be] font-bold">
+                      INTAKE DOSSIER
+                    </span>
+                  </div>
+                  <p className="leading-relaxed whitespace-pre-wrap">
+                    {sections.summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Section 2: Officer Lutkin - Forensics */}
+              {sections?.lutkin && (
+                <div className="dossier-section">
+                  <div className="dossier-section-title flex items-center justify-between border-b border-[#9c764e] pb-1.5 mb-2.5">
+                    <h3 className="font-rye text-xs md:text-sm text-[#3d2412] flex items-center gap-1.5">
+                      <span>2. FORENSIC INTELLIGENCE ASSESSMENT</span>
+                      <span className="text-[11px] font-elite text-[#6e4e30]">— OFFICER LUTKIN</span>
+                    </h3>
+                    <span className="text-[9px] font-elite px-2 py-0.5 rounded bg-[#00d2ff]/20 text-[#006080] border border-[#00d2ff]/50 font-bold">
+                      CRYPTOGRAPHIC & PHYSICAL FORENSICS
+                    </span>
+                  </div>
+                  <div className="leading-relaxed whitespace-pre-wrap">
+                    {sections.lutkin}
+                  </div>
+                </div>
+              )}
+
+              {/* Section 3: Officer Vanguard - Field Intel & OSINT */}
+              {sections?.vanguard && (
+                <div className="dossier-section">
+                  <div className="dossier-section-title flex items-center justify-between border-b border-[#9c764e] pb-1.5 mb-2.5">
+                    <h3 className="font-rye text-xs md:text-sm text-[#3d2412] flex items-center gap-1.5">
+                      <span>3. FIELD INTELLIGENCE & OSINT DOSSIER</span>
+                      <span className="text-[11px] font-elite text-[#6e4e30]">— OFFICER VANGUARD</span>
+                    </h3>
+                    <span className="text-[9px] font-elite px-2 py-0.5 rounded bg-[#f97316]/20 text-[#9a3412] border border-[#f97316]/50 font-bold">
+                      OSINT & TRANSIT CORRIDORS
+                    </span>
+                  </div>
+                  <div className="leading-relaxed whitespace-pre-wrap">
+                    {sections.vanguard}
+                  </div>
+                </div>
+              )}
+
+              {/* Section 4: Officer Cortex - Analytics & Link Graph */}
+              {sections?.cortex && (
+                <div className="dossier-section">
+                  <div className="dossier-section-title flex items-center justify-between border-b border-[#9c764e] pb-1.5 mb-2.5">
+                    <h3 className="font-rye text-xs md:text-sm text-[#3d2412] flex items-center gap-1.5">
+                      <span>4. ANALYTICAL ANOMALY & LINK GRAPH MATRIX</span>
+                      <span className="text-[11px] font-elite text-[#6e4e30]">— OFFICER CORTEX</span>
+                    </h3>
+                    <span className="text-[9px] font-elite px-2 py-0.5 rounded bg-[#10b981]/20 text-[#065f46] border border-[#10b981]/50 font-bold">
+                      PROBABILITY & ANOMALY MATRIX
+                    </span>
+                  </div>
+                  <div className="leading-relaxed whitespace-pre-wrap">
+                    {sections.cortex}
+                  </div>
+                </div>
+              )}
+
+              {/* Section 5: Detective Apex - Adversarial Review */}
+              {sections?.apex && (
+                <div className="dossier-section">
+                  <div className="dossier-section-title flex items-center justify-between border-b border-[#9c764e] pb-1.5 mb-2.5">
+                    <h3 className="font-rye text-xs md:text-sm text-[#3d2412] flex items-center gap-1.5">
+                      <span>5. ADVERSARIAL REVIEW & RED-TEAM AUDIT</span>
+                      <span className="text-[11px] font-elite text-[#6e4e30]">— DETECTIVE APEX</span>
+                    </h3>
+                    <span className="text-[9px] font-elite px-2 py-0.5 rounded bg-[#a855f7]/20 text-[#6b21a8] border border-[#a855f7]/50 font-bold">
+                      DEPUTY CROSS-EXAMINATION
+                    </span>
+                  </div>
+                  <div className="leading-relaxed whitespace-pre-wrap">
+                    {sections.apex}
+                  </div>
+                </div>
+              )}
+
+              {/* Section 6: Detective Argus - Chief Verdict & Case Resolution */}
+              {sections?.argus && (
+                <div className="dossier-section border-2 border-[#b88c4d] bg-[#ebdcc2]">
+                  <div className="dossier-section-title flex items-center justify-between border-b-2 border-[#9c764e] pb-1.5 mb-2.5">
+                    <h3 className="font-rye text-xs md:text-sm text-[#3d2412] flex items-center gap-1.5">
+                      <span>6. CHIEF INVESTIGATION OFFICER OFFICIAL VERDICT</span>
+                      <span className="text-[11px] font-elite text-[#854524]">— DETECTIVE ARGUS</span>
+                    </h3>
+                    <span className="text-[9px] font-elite px-2 py-0.5 rounded bg-[#f59e0b] text-[#1f130b] font-bold shadow-sm">
+                      CULPRIT UNMASKED · FINAL VERDICT
+                    </span>
+                  </div>
+                  <div className="leading-relaxed font-bold whitespace-pre-wrap">
+                    {sections.argus}
+                  </div>
+                </div>
+              )}
+
+              {/* Fallback if sections were not parseable */}
+              {!sections?.lutkin && !sections?.argus && (
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {activeReport.full_report_text}
+                </div>
+              )}
             </div>
 
             {/* Bureau Signatures & Stamp */}

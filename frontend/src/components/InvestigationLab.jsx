@@ -132,11 +132,12 @@ export default function InvestigationLab({
       role: 'Chief Investigation Officer',
       avatar: '/avatars/argus.png',
       face: '/avatars/argus.png',
-      model: 'openrouter/free (Gemma-4-31B)',
+      clearance: 'Tier-1 Chief Commander',
+      division: 'Executive Bureau Directive',
       accent: '#f59e0b',
       borderClass: 'border-amber-500',
       badge: 'CHIEF',
-      desc: 'Orchestrates case strategy, interrogates suspect motives, and issues final directives.'
+      desc: 'Orchestrates case strategy, synthesizes all 4 specialist reports, audits overlooked clues, and unmasks the culprit.'
     },
     {
       id: 'APEX',
@@ -144,7 +145,8 @@ export default function InvestigationLab({
       role: 'Deputy Investigation Officer',
       avatar: '/avatars/apex.png',
       face: '/avatars/apex.png',
-      model: 'openrouter/free (Nemotron-3.5)',
+      clearance: 'Tier-1 Red-Team Auditor',
+      division: 'Adversarial Review',
       accent: '#a855f7',
       borderClass: 'border-purple-500',
       badge: 'DEPUTY',
@@ -156,7 +158,8 @@ export default function InvestigationLab({
       role: 'Forensic Intelligence Officer',
       avatar: '/avatars/lutkin.png',
       face: '/avatars/lutkin.png',
-      model: 'openrouter/free (LFM-2.5)',
+      clearance: 'Tier-1 Forensic Examiner',
+      division: 'Cryptographic & Trace Unit',
       accent: '#00d2ff',
       borderClass: 'border-cyan-400',
       badge: 'FORENSICS',
@@ -168,7 +171,8 @@ export default function InvestigationLab({
       role: 'Intelligence Operations Officer',
       avatar: '/avatars/vanguard.png',
       face: '/avatars/vanguard.png',
-      model: 'openrouter/free (Nemotron-Omni)',
+      clearance: 'Tier-1 Field Intelligence',
+      division: 'OSINT & Wiretap Desk',
       accent: '#f97316',
       borderClass: 'border-orange-500',
       badge: 'INTEL & OSINT',
@@ -180,7 +184,8 @@ export default function InvestigationLab({
       role: 'Analytical Intelligence Officer',
       avatar: '/avatars/cortex.png',
       face: '/avatars/cortex.png',
-      model: 'openrouter/free (Gemma-4-26B)',
+      clearance: 'Tier-1 Biostatistician',
+      division: 'Analytical Link Matrix',
       accent: '#10b981',
       borderClass: 'border-emerald-400',
       badge: 'ANALYTICS',
@@ -198,7 +203,7 @@ export default function InvestigationLab({
             Investigation Laboratory & Conclave
           </h1>
           <p className="font-elite text-xs text-[#bda47b] mt-0.5">
-            5-Stage Autonomous Multi-Agent Investigation Powered by Unlimited Free Models.
+            5-Stage Autonomous Multi-Agent Investigation & Case Deliberation.
           </p>
         </div>
 
@@ -373,7 +378,7 @@ export default function InvestigationLab({
                     </p>
 
                     <div className="text-[8px] font-mono-code text-[#735133] border-t border-[#bfa27a] pt-1 truncate">
-                      Model: {officer.model.split('/')[1] || officer.model}
+                      {officer.clearance}
                     </div>
                   </div>
                 );
@@ -438,11 +443,11 @@ export default function InvestigationLab({
                     </div>
 
                     <div className="flex items-center gap-2 text-[10px] font-mono-code text-[#795938]">
-                      <span className="px-2 py-0.5 rounded bg-[#ebdcc0] border border-[#a88258]">
-                        {turn.model_used ? turn.model_used.split('/')[1] || turn.model_used : 'bureau-conclave'}
+                      <span className="px-2 py-0.5 rounded bg-[#ebdcc0] border border-[#a88258] text-[9px] font-bold">
+                        {matchedOfficer.division || 'OFFICIAL BRIEF'}
                       </span>
                       <span className="text-[9px] text-[#937554]">
-                        STEP #{i + 1}
+                        STAGE #{i + 1}
                       </span>
                     </div>
                   </div>

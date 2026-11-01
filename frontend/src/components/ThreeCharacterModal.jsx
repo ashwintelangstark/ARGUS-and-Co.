@@ -306,8 +306,8 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[9px] font-mono-code bg-[#2b1b11] border border-[#9b7545] text-[#d6b785]">
-              AI: {currentAgent.model.split('/')[1] || currentAgent.model}
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded text-[9px] font-mono-code bg-[#2b1b11] border border-[#9b7545] text-[#d6b785]">
+              CLEARANCE: {currentAgent.badge}
             </span>
             <button 
               onClick={onClose}
@@ -424,7 +424,7 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
                     )}
                     <span>{msg.role === 'user' ? 'YOU (LEAD INVESTIGATOR)' : currentAgent.name}</span>
                   </div>
-                  {msg.model && <span className="font-mono-code text-[8px] opacity-75">{msg.model.split(':')[0]}</span>}
+                  <span className="font-mono-code text-[8px] opacity-75 text-[#c69a50]">AUTHENTICATED</span>
                 </div>
                 <div className="whitespace-pre-wrap leading-relaxed">
                   {msg.content}

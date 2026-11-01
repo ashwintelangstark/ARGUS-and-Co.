@@ -534,6 +534,7 @@ app.post('/api/interrogate', async (req, res) => {
     ];
 
     const result = await generateAgentCompletion({
+      officerId,
       systemPrompt: profile.systemPrompt,
       preferredModel: profile.preferredModel,
       messages

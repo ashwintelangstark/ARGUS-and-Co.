@@ -123,7 +123,7 @@ export default function App() {
       {/* Bottom Footer Status Strip */}
       <footer className="footer-strip">
         <span>ARGUS DETECTIVE AGENCY · FRONTIER DISTRICT · EST. 1891</span>
-        <span>SQLITE (WAL) STORAGE ACTIVE · OPENROUTER FREE TIER AI</span>
+        <span>SQLITE (WAL) STORAGE ACTIVE · 5-OFFICER MULTI-AGENT PROTOCOL</span>
       </footer>
     </div>
   );

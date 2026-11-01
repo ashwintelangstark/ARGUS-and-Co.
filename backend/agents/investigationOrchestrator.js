@@ -109,6 +109,7 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
     : `You are opening the Bureau Conclave for case "${caseData.title}". State the core mystery to solve, identify key questions, evaluate evidence availability, and task Officer Lutkin with the initial forensic examination of the evidence.`;
 
   const argusIntro = await generateAgentCompletion({
+    officerId: 'ARGUS',
     systemPrompt: AGENT_PROFILES.ARGUS.systemPrompt,
     preferredModel: AGENT_PROFILES.ARGUS.preferredModel,
     messages: [
@@ -138,6 +139,7 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
   }
 
   const lutkinResponse = await generateAgentCompletion({
+    officerId: 'LUTKIN',
     systemPrompt: AGENT_PROFILES.LUTKIN.systemPrompt,
     preferredModel: AGENT_PROFILES.LUTKIN.preferredModel,
     messages: [
@@ -169,6 +171,7 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
   }
 
   const vanguardResponse = await generateAgentCompletion({
+    officerId: 'VANGUARD',
     systemPrompt: AGENT_PROFILES.VANGUARD.systemPrompt,
     preferredModel: AGENT_PROFILES.VANGUARD.preferredModel,
     messages: [
@@ -200,6 +203,7 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
   }
 
   const cortexResponse = await generateAgentCompletion({
+    officerId: 'CORTEX',
     systemPrompt: AGENT_PROFILES.CORTEX.systemPrompt,
     preferredModel: AGENT_PROFILES.CORTEX.preferredModel,
     messages: [
@@ -226,6 +230,7 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
     : `As the independent reviewer and red-team officer, scrutinize the working hypothesis built by Lutkin, Vanguard, and Cortex. Challenge their assumptions, point out gaps in chain of custody, identify alternative plausible explanations, and ensure no false accusations are made.`;
 
   const apexResponse = await generateAgentCompletion({
+    officerId: 'APEX',
     systemPrompt: AGENT_PROFILES.APEX.systemPrompt,
     preferredModel: AGENT_PROFILES.APEX.preferredModel,
     messages: [
@@ -245,17 +250,20 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
     message: 'Detective Argus is formulating the Bureau Chief Verdict and Directives...' 
   });
 
-  const argusVerdictPrompt = isReAnalysis
-    ? `Review the entire re-analysis deliberation, especially Detective Apex's counter-theories and the deep intelligence lookups. Deliver the official, revised Chief Bureau Verdict with decisive precision. Unmask the true perpetrator, their precise means, motive, and opportunity, with evidentiary certitude that surpasses human intuition.`
-    : `Review the entire deliberation, particularly the concerns raised by Detective Apex. Deliver the Chief Investigation Officer's final verdict, decisive next operational directives, and summary of verified facts.`;
+  const argusVerdictPrompt = `You are Detective Argus, Chief Investigation Officer. You are responsible for using ALL information given by the 4 officers (Officer Cortex's correlation matrix and anomalies, Officer Vanguard's transit logs and wire intercepts, Officer Lutkin's forensic checksums and physical trace analysis, and Detective Apex's adversarial critique).
+MANDATORY PROTOCOL:
+1. Check if ANY information was left behind or overlooked across all 4 testimonies. Reconcile all remaining anomalies and contradictions.
+2. Join all the information from Cortex, Vanguard, Lutkin, and Apex together into an unbroken chain of deduction.
+3. Deliver the definitive conclusion: State unequivocally WHO the culprit/perpetrator is, their exact motive, their modus operandi, and issue executive apprehension warrants.`;
 
   const argusVerdict = await generateAgentCompletion({
+    officerId: 'ARGUS',
     systemPrompt: AGENT_PROFILES.ARGUS.systemPrompt,
     preferredModel: AGENT_PROFILES.ARGUS.preferredModel,
     messages: [
       { role: 'user', content: caseContextSummary },
       ...conversationHistory,
-      { role: 'user', content: `Detective Argus, synthesize all officer findings and deliver your official Bureau Verdict.` }
+      { role: 'user', content: argusVerdictPrompt }
     ]
   });
   recordTurn('ARGUS', 'verdict', argusVerdict.content, argusVerdict.modelUsed);

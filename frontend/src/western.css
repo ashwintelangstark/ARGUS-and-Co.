@@ -611,15 +611,16 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
-/* Print / PDF Export Styles for ARGUS and Co. Dossier (WYSIWYG on-screen match) */
+/* Print / PDF Export Styles for ARGUS and Co. Dossier (Full Bleed Fill-to-Page) */
 @media print {
   @page {
-    size: auto;
-    margin: 10mm;
+    size: A4 portrait;
+    margin: 0; /* Full bleed eliminates white borders completely */
   }
 
-  html, body, #root, #app-container {
-    background: #ffffff !important;
+  html, body, #root, #app-container, .main-viewport {
+    background: #f5ecdb !important;
+    background-color: #f5ecdb !important;
     color: #2a1a0f !important;
     overflow: visible !important;
     height: auto !important;
@@ -647,15 +648,32 @@ input:focus, textarea:focus, select:focus {
     background: #f5ecdb !important;
     background-color: #f5ecdb !important;
     color: #2a1a0f !important;
-    border: 3px double #a17e55 !important;
+    border: none !important;
     box-shadow: none !important;
+    border-radius: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-    margin: 0 auto !important;
-    padding: 32px !important;
-    page-break-inside: auto;
+    margin: 0 !important;
+    padding: 18mm 18mm 22mm 18mm !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  .dossier-section {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 22px !important;
+    background: #eedec8 !important;
+    border: 1px solid #bda17a !important;
+    padding: 14px 18px !important;
+    border-radius: 4px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .dossier-section-title {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 
   .printable-dossier * {

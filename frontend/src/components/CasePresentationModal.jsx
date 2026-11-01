@@ -17,7 +17,7 @@ const OFFICERS_ORDER = [
     soundEffect: '💥 *ANOMALY DETECTED*',
     comicTag: 'CORRELATION MATRIX COMPUTED',
     defaultText: (caseTitle, clueCount) => 
-      `Attention Bureau officers. I have cross-calculated the probability vectors across all ${clueCount || 5} nodes for case "${caseTitle}". Anomaly indices indicate non-random coordination across the transaction timelines. The relational yarn threads confirm our primary suspects intersected before the breach occurred.`
+      `Attention Bureau officers. I have cross-calculated the probability vectors across all ${clueCount || 5} nodes for case "${caseTitle}". Anomaly indices indicate non-random coordination across the transaction timelines with a 94.2% correlation. The relational link graph confirms our primary suspects intersected at the telegraph terminal prior to the reported incident.`
   },
   {
     id: 'VANGUARD',
@@ -27,9 +27,9 @@ const OFFICERS_ORDER = [
     avatar: '/avatars/vanguard.png',
     accent: '#f97316',
     soundEffect: '⚡ *OSINT INTERCEPT*',
-    comicTag: 'TELEGRAPH WIRETAP VERIFIED',
+    comicTag: 'TELEGRAPH WIRETAP & TRANSIT CORRIDORS',
     defaultText: (caseTitle) => 
-      `Vanguard here from field ops. Public manifests and wire intercepts confirm suspect movements matching our anomaly vectors. We tracked transit coordinates across the district boundary. The ciphered telegraph ribbons directly corroborate the presence of unauthorized syndicate operatives on site.`
+      `Vanguard here from field ops. Public registries, shipping manifests, and wire intercepts confirm suspect movements matching Cortex's anomaly vectors. We tracked transit coordinates across the district boundary where an unscheduled cargo crate was cleared. The ciphered telegraph ribbons directly corroborate the presence of unauthorized operatives on site.`
   },
   {
     id: 'LUTKIN',
@@ -39,9 +39,9 @@ const OFFICERS_ORDER = [
     avatar: '/avatars/lutkin.png',
     accent: '#00d2ff',
     soundEffect: '🔬 *CRYPTOGRAPHIC FORENSICS*',
-    comicTag: 'SHA-256 INTEGRITY SEALED',
+    comicTag: 'SHA-256 & CHEMICAL FORGERY FORENSICS',
     defaultText: (caseTitle) => 
-      `Forensics division reporting. Cryptographic SHA-256 hashes on all intake artifacts have been verified with zero byte tampering. Microscopic ink analysis on the signed ledger entries proves the ledger page was chemically washed and forged with an iron gall formula dated three days after the incident.`
+      `Forensics division reporting. Cryptographic SHA-256 hashes on all intake artifacts have been verified with zero byte tampering. Microscopic tool mark analysis on the security latch proves the locking tumblers were operated from within using an authentic supervisor master key with zero forced entry, and document ink chromatography proves the register signatures were chemically forged.`
   },
   {
     id: 'APEX',
@@ -51,9 +51,9 @@ const OFFICERS_ORDER = [
     avatar: '/avatars/apex.png',
     accent: '#a855f7',
     soundEffect: '⚔️ *CONTRARIAN SCRUTINY*',
-    comicTag: 'CROSS-EXAMINATION PROVED',
+    comicTag: 'ADVERSARIAL STRESS-TEST & CROSS-EXAM',
     defaultText: (caseTitle) => 
-      `Hold your horses, team. As devil's advocate, I cross-examined every assumption. The defense claims the vault was breached from the outside, but physical lock tumbler scrape patterns show the cylinder was operated with an authentic brass master key from inside the cashier cage. The inside job thesis holds water!`
+      `Hold your horses, squad. As deputy reviewer, I cross-examined every working theory. I challenged whether the courier was being framed as a decoy, and stress-tested the timeline against defense counsel objections. The defense claims an outsider breached the perimeter, but the master key markings and altered night patrol logs prove the inside job hypothesis holds water!`
   },
   {
     id: 'ARGUS',
@@ -62,10 +62,10 @@ const OFFICERS_ORDER = [
     badge: 'CHIEF',
     avatar: '/avatars/argus.png',
     accent: '#f59e0b',
-    soundEffect: '🏆 *FINAL EXECUTIVE VERDICT*',
-    comicTag: 'BUREAU VERDICT RENDERED',
+    soundEffect: '🏆 *FINAL VERDICT & CULPRIT UNMASKED*',
+    comicTag: 'BUREAU VERDICT RENDERED · CASE RESOLVED',
     defaultText: (caseTitle) => 
-      `I have weighed every piece of evidence, every wire intercept, and every forensic hash. The evidence web is unbroken. The verdict of ARGUS and Co. is final: all clues point to premeditated conspiracy. Warrant directives are hereby issued. Case certified and ready for executive submission!`
+      `As Chief Investigation Officer, I have evaluated all evidence presented by my four specialists. First, auditing for any overlooked information: every clock skew, wire intercept frequency, lock tumbler mark, and financial cluster has been accounted for. No detail was left behind. By joining all four intelligence vectors, the conclusion of ARGUS and Co. is definitive: the primary culprit behind "${caseTitle}" is the trusted inside supervisor acting in premeditated conspiracy with the external courier! Their motive was financial liquidation prior to audit. Executive apprehension warrants are hereby dispatched. Case officially resolved!`
   }
 ];
 
@@ -87,11 +87,13 @@ export default function CasePresentationModal({
   // Find if officer has a specific message in deliberations
   const getSpeechText = (officer) => {
     if (deliberations && deliberations.length > 0) {
-      const match = deliberations.find(d => 
-        (d.officer && d.officer.toUpperCase() === officer.id) ||
-        (d.officer_name && d.officer_name.toUpperCase().includes(officer.id))
-      );
-      if (match && match.message && match.message.length > 20) {
+      const match = deliberations.find(d => {
+        const matchesOfficer = (d.officer && d.officer.toUpperCase() === officer.id) ||
+                               (d.officer_name && d.officer_name.toUpperCase().includes(officer.id));
+        const isNotCorrupted = officer.id === 'ARGUS' || !d.message.includes('[DETECTIVE ARGUS');
+        return matchesOfficer && isNotCorrupted;
+      });
+      if (match && match.message && match.message.length > 30) {
         return match.message;
       }
     }
@@ -372,3 +374,4 @@ export default function CasePresentationModal({
     </div>
   );
 }
+
