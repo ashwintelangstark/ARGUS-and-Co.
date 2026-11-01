@@ -270,8 +270,8 @@ export default function BureauContentRenderer({ content, className = '' }) {
       continue;
     }
 
-    // 4. Detect Divider lines (--- or ===)
-    if (/^[=-]{3,}$/.test(rawLine)) {
+    // 4. Detect Divider lines (---, ===, ___, ***)
+    if (/^[=\-_*]{3,}$/.test(rawLine)) {
       elements.push(
         <div key={`divider-${elements.length}`} className="my-3 border-t border-dashed border-[#a68056]/60" />
       );
@@ -279,7 +279,28 @@ export default function BureauContentRenderer({ content, className = '' }) {
       continue;
     }
 
-    // 5. Standard Narrative Paragraph
+    // 5. Detect and Skip redundant raw header repetition
+    if (/^(ARGUS & CO\.|CLASSIFIED INVESTIGATION DOSSIER|WESTERN INVESTIGATION BUREAU)/i.test(rawLine)) {
+      lineIdx++;
+      continue;
+    }
+
+    // 6. Detect metadata lines (e.g. CASE REFERENCE: ...)
+    if (/^(CASE REFERENCE|CASE TITLE|SECURITY TIER|INVESTIGATION VECTOR|DATE COMPILED|LEAD COMMANDER):\s*/i.test(rawLine)) {
+      const parts = rawLine.split(/:\s*/);
+      const label = parts[0];
+      const val = parts.slice(1).join(': ');
+      elements.push(
+        <div key={`meta-${elements.length}`} className="my-1 flex items-center gap-2 text-xs font-elite">
+          <span className="font-bold text-[#694827] uppercase tracking-wider">{label}:</span>
+          <span className="text-[#2b1c11]">{val}</span>
+        </div>
+      );
+      lineIdx++;
+      continue;
+    }
+
+    // 7. Standard Narrative Paragraph
     elements.push(
       <p key={`para-${elements.length}`} className="my-1.5 leading-relaxed text-xs sm:text-[13px] text-[#2c1c11] whitespace-normal">
         {renderInlineContent(rawLine)}

@@ -137,21 +137,23 @@ export default function ReportsView({
       };
     }
     const text = activeReport.full_report_text || '';
-    const extract = (startHeading, endHeading) => {
-      const parts = text.split(startHeading);
-      if (parts.length < 2) return '';
-      const sub = parts[1];
-      const raw = endHeading ? sub.split(endHeading)[0] : sub;
-      return raw.replace(/^[=\-\s]+/, '').replace(/[=\-\s]+$/, '').trim();
+    const extract = (startPattern, endPattern) => {
+      const startMatch = text.search(startPattern);
+      if (startMatch === -1) return '';
+      const afterStart = text.slice(startMatch).replace(startPattern, '');
+      if (!endPattern) return afterStart.replace(/^[=\-\s*#]+/, '').replace(/[=\-\s*#]+$/, '').trim();
+      const endMatch = afterStart.search(endPattern);
+      const raw = endMatch !== -1 ? afterStart.slice(0, endMatch) : afterStart;
+      return raw.replace(/^[=\-\s*#]+/, '').replace(/[=\-\s*#]+$/, '').trim();
     };
 
     return {
-      summary: extract('1. EXECUTIVE SUMMARY & INTAKE RECORD', '2. FORENSIC INTELLIGENCE ASSESSMENT') || activeReport.executive_summary || text,
-      lutkin: extract('2. FORENSIC INTELLIGENCE ASSESSMENT', '3. FIELD INTELLIGENCE & OSINT DOSSIER'),
-      vanguard: extract('3. FIELD INTELLIGENCE & OSINT DOSSIER', '4. ANALYTICAL ANOMALY & LINK GRAPH MATRIX'),
-      cortex: extract('4. ANALYTICAL ANOMALY & LINK GRAPH MATRIX', '5. ADVERSARIAL REVIEW & RED-TEAM AUDIT'),
-      apex: extract('5. ADVERSARIAL REVIEW & RED-TEAM AUDIT', '6. CHIEF INVESTIGATION OFFICER OFFICIAL VERDICT'),
-      argus: extract('6. CHIEF INVESTIGATION OFFICER OFFICIAL VERDICT', 'OFFICIAL BUREAU CERTIFICATION') || activeReport.conclusions
+      summary: extract(/(?:1\.\s*)?EXECUTIVE SUMMARY/i, /(?:2\.\s*)?FORENSIC INTELLIGENCE/i) || activeReport.executive_summary || '',
+      lutkin: extract(/(?:2\.\s*)?FORENSIC INTELLIGENCE/i, /(?:3\.\s*)?FIELD INTELLIGENCE/i) || activeReport.forensic_findings || '',
+      vanguard: extract(/(?:3\.\s*)?FIELD INTELLIGENCE/i, /(?:4\.\s*)?ANALYTICAL ANOMALY/i) || activeReport.intel_summary || '',
+      cortex: extract(/(?:4\.\s*)?ANALYTICAL ANOMALY/i, /(?:5\.\s*)?ADVERSARIAL REVIEW/i) || activeReport.anomaly_detection || '',
+      apex: extract(/(?:5\.\s*)?ADVERSARIAL REVIEW/i, /(?:6\.\s*)?CHIEF INVESTIGATION/i) || activeReport.defense_critique || '',
+      argus: extract(/(?:6\.\s*)?CHIEF INVESTIGATION/i, /OFFICIAL BUREAU CERTIFICATION/i) || activeReport.conclusions || ''
     };
   })() : null;
 
@@ -239,10 +241,10 @@ export default function ReportsView({
             {/* Document Letterhead */}
             <div className="text-center border-b-2 border-[#7a5433] pb-4 mb-6">
               <img 
-                src="/logo.png" 
-                onError={(e) => { e.currentTarget.src = '/fevicon.png'; }}
+                src="/favicon.png" 
+                onError={(e) => { e.currentTarget.src = '/logo.png'; }}
                 alt="ARGUS & Co." 
-                className="w-20 h-20 mx-auto mb-2 rounded-full border-2 border-[#b1844c] shadow-md object-cover bg-[#17100a]" 
+                className="w-24 h-24 mx-auto mb-2 rounded-full border-2 border-[#b1844c] shadow-lg object-cover" 
               />
               <h2 className="font-rye text-2xl md:text-3xl text-[#3b2414] tracking-wider">
                 ARGUS & Co.

@@ -25,7 +25,6 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
       badge: 'BUREAU COMMAND',
       accent: '#f59e0b',
       borderClass: 'border-amber-500',
-      model: 'openrouter/free (Gemma-4-31B)',
       specialty: 'Strategy, Motive Synthesis, Final Directives',
       greeting: 'I am Detective Argus. What matter requires chief command review?'
     },
@@ -35,7 +34,6 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
       badge: 'RED-TEAM AUDITOR',
       accent: '#a855f7',
       borderClass: 'border-purple-500',
-      model: 'openrouter/free (Nemotron-3.5)',
       specialty: 'Skeptical Cross-Examination, Confirmation Bias Defense',
       greeting: 'Detective Apex here. Before you accept that theory, let us tear it apart.'
     },
@@ -45,7 +43,6 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
       badge: 'DIGITAL FORENSICS',
       accent: '#00d2ff',
       borderClass: 'border-cyan-400',
-      model: 'openrouter/free (LFM-2.5)',
       specialty: 'Cryptographic Hashes, Audio Spectrograms, Forgeries',
       greeting: 'Officer Lutkin at the bench. Files and physical evidence tell the unvarnished truth.'
     },
@@ -55,7 +52,6 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
       badge: 'FIELD INTEL & OSINT',
       accent: '#f97316',
       borderClass: 'border-orange-500',
-      model: 'openrouter/free (Nemotron-Omni)',
       specialty: 'Surveillance Wires, Transit Logs, Public Registries',
       greeting: 'Officer Vanguard reporting. Coordinates, routes, and movement patterns locked.'
     },
@@ -65,7 +61,6 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
       badge: 'ANALYTICS & LINK GRAPH',
       accent: '#10b981',
       borderClass: 'border-emerald-400',
-      model: 'openrouter/free (Gemma-4-26B)',
       specialty: 'Anomaly Detection, Harmonic Packets, Entity Clusters',
       greeting: 'Officer Cortex online. The mathematical probability of coincidence is near zero.'
     }
@@ -77,7 +72,7 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
   useEffect(() => {
     bureauAudio.biometricScanHum();
     setChatMessages([
-      { role: 'assistant', content: currentAgent.greeting, model: currentAgent.model }
+      { role: 'assistant', content: currentAgent.greeting }
     ]);
   }, [agentId]);
 
@@ -258,19 +253,19 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
         bureauAudio.typewriterClick();
         setChatMessages(prev => [
           ...prev,
-          { role: 'assistant', content: data.reply, model: data.modelUsed }
+          { role: 'assistant', content: data.reply }
         ]);
       } else {
         setChatMessages(prev => [
           ...prev,
-          { role: 'assistant', content: 'Connection temporarily disrupted. Repeating statement.', model: 'offline' }
+          { role: 'assistant', content: 'Connection temporarily disrupted. Repeating statement.' }
         ]);
       }
     } catch (err) {
       console.error('Chat error:', err);
       setChatMessages(prev => [
         ...prev,
-        { role: 'assistant', content: `[${currentAgent.name}]: I hear you, but the telegraph wire dropped packet. Let me state my operational position again.`, model: 'local' }
+        { role: 'assistant', content: `[${currentAgent.name}]: I hear you, but the telegraph wire dropped packet. Let me state my operational position again.` }
       ]);
     } finally {
       setIsThinking(false);
