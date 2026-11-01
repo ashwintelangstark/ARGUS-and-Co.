@@ -532,7 +532,7 @@ export default function CaseFilesView({
                           className="western-btn px-2 py-1 text-[10px]"
                           title="Open case in Investigation Lab"
                         >
-                          ⚒ Lab
+                          Lab
                         </button>
 
                         {/* Edit Case Button */}

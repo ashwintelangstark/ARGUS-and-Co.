@@ -197,7 +197,7 @@ export default function ThreeHqScene({
           className="western-btn"
           title="Zoom camera onto Central Case Board"
         >
-          <span>▤ Inspect Board</span>
+          <span>Inspect Board</span>
         </button>
 
         <button
@@ -235,7 +235,7 @@ export default function ThreeHqScene({
           <div className="flex items-start justify-between border-b border-[#7d5631] pb-2 mb-3">
             <div>
               <span className="text-[10px] tracking-wider text-[#d1a65e] uppercase">
-                {inspectedCard.type === 'evidence' ? '★ EVIDENCE RECORD EXAMINED' : inspectedCard.type === 'clue' ? '◆ INVESTIGATIVE CLUE CARD' : '▣ ACTIVE CASE DOCKET'}
+                {inspectedCard.type === 'evidence' ? 'EVIDENCE RECORD EXAMINED' : inspectedCard.type === 'clue' ? 'INVESTIGATIVE CLUE CARD' : 'ACTIVE CASE DOCKET'}
               </span>
               <h3 className="font-rye text-base text-[#fcedd0] mt-0.5">
                 {inspectedCard.type === 'evidence' ? inspectedCard.data?.original_name : inspectedCard.type === 'clue' ? inspectedCard.data?.title : inspectedCard.caseData?.title}
@@ -322,7 +322,7 @@ export default function ThreeHqScene({
       {/* HQ Bottom Dashboard Ledger */}
       <div className="hq-dashboard">
         <div className="dash-card">
-          <h3>▣ BUREAU LEDGER</h3>
+          <h3>BUREAU LEDGER</h3>
           <div className="metric-row">
             <div className="metric">
               <b id="caseMetric">{metrics.openCases}</b>

@@ -661,28 +661,136 @@ export function buildRealisticHqScene(canvas, options = {}) {
 
   // Open Corridor Waypoints (Strictly Avoiding All Tables and Desks)
   const officeWaypoints = [
-    // Case Board Inspection (North Aisle)
-    { x: -2.8, z: -5.8, rotY: Math.PI },
-    { x: 0.0, z: -5.8, rotY: Math.PI },
-    { x: 2.8, z: -5.8, rotY: Math.PI },
-    // Left Open Corridor (Between Left Desks and Central Table)
-    { x: -3.8, z: -2.2, rotY: 0 },
-    { x: -3.8, z: 0.8, rotY: 0 },
-    { x: -3.8, z: 2.4, rotY: Math.PI / 2 },
-    { x: -3.8, z: 4.2, rotY: 0 },
-    // Right Open Corridor (Between Right Desks and Central Table)
-    { x: 3.8, z: -2.2, rotY: 0 },
-    { x: 3.8, z: 0.8, rotY: 0 },
-    { x: 3.8, z: 2.4, rotY: -Math.PI / 2 },
-    { x: 3.8, z: 4.2, rotY: 0 },
-    // South Open Corridor (Behind Central Table)
-    { x: -2.2, z: 6.2, rotY: 0 },
+    // Case Board Inspection (North Aisle - in front of evidence board)
+    { x: -3.0, z: -5.5, rotY: Math.PI },
+    { x: 0.0, z: -5.5, rotY: Math.PI },
+    { x: 3.0, z: -5.5, rotY: Math.PI },
+
+    // North-West Corridor (near bookshelf & file cabinets)
+    { x: -4.0, z: -2.4, rotY: 0 },
+    { x: -4.0, z: -0.5, rotY: 0.4 },
+
+    // South-West Corridor (between Apex's desk and central table)
+    { x: -4.0, z: 2.5, rotY: Math.PI / 2 },
+    { x: -4.0, z: 5.0, rotY: 0 },
+
+    // North-East Corridor (near telegraph machine)
+    { x: 4.0, z: -2.4, rotY: 0 },
+    { x: 4.0, z: -0.5, rotY: -0.4 },
+
+    // South-East Corridor (between Vanguard's desk and central table)
+    { x: 4.0, z: 2.5, rotY: -Math.PI / 2 },
+    { x: 4.0, z: 5.0, rotY: 0 },
+
+    // South Entrance Promenade (behind Chief's station)
+    { x: -2.5, z: 6.2, rotY: 0 },
     { x: 0.0, z: 6.2, rotY: 0 },
-    { x: 2.2, z: 6.2, rotY: 0 },
-    // Clerestory & Archives Corners
-    { x: -10.2, z: -4.5, rotY: Math.PI / 4 },
-    { x: 10.2, z: -4.5, rotY: -Math.PI / 4 }
+    { x: 2.5, z: 6.2, rotY: 0 },
+
+    // Far West & East Archives
+    { x: -9.5, z: -3.5, rotY: Math.PI / 3 },
+    { x: 9.5, z: -3.5, rotY: -Math.PI / 3 }
   ];
+
+  // Precise Central Table Obstacle Box (Table + Chairs margin)
+  const TABLE_OBSTACLE = { minX: -2.9, maxX: 2.9, minZ: 0.65, maxZ: 4.1 };
+
+  // Liang-Barsky 2D line segment vs AABB obstacle intersection test
+  function lineIntersectsObstacle(p1, p2, box) {
+    if (p1.x > box.minX && p1.x < box.maxX && p1.z > box.minZ && p1.z < box.maxZ) return true;
+    if (p2.x > box.minX && p2.x < box.maxX && p2.z > box.minZ && p2.z < box.maxZ) return true;
+
+    const dx = p2.x - p1.x;
+    const dz = p2.z - p1.z;
+    let t0 = 0.0;
+    let t1 = 1.0;
+
+    const checks = [
+      { p: -dx, q: p1.x - box.minX },
+      { p: dx, q: box.maxX - p1.x },
+      { p: -dz, q: p1.z - box.minZ },
+      { p: dz, q: box.maxZ - p1.z }
+    ];
+
+    for (const { p, q } of checks) {
+      if (p === 0) {
+        if (q < 0) return false;
+      } else {
+        const r = q / p;
+        if (p < 0) {
+          if (r > t1) return false;
+          if (r > t0) t0 = r;
+        } else {
+          if (r < t0) return false;
+          if (r < t1) t1 = r;
+        }
+      }
+    }
+    return t0 <= t1;
+  }
+
+  // Deterministic Corridor Path Planning around central table
+  function planPath(startPos, endPos, isArgusReturningHome = false) {
+    // Stepping out from Chief's desk station (behind central table)
+    if (Math.abs(startPos.x) < 2.0 && startPos.z >= 2.0 && startPos.z <= 4.2) {
+      const exitPos = new THREE.Vector3(0, 0, 5.2);
+      return [exitPos, ...planPath(exitPos, endPos, false)];
+    }
+
+    // Argus returning to his chair at (0, 0, 3.35) must strictly enter from South aisle
+    if (isArgusReturningHome) {
+      const aisleX = (startPos.x <= 0) ? -4.0 : 4.0;
+      if (startPos.z < 4.5) {
+        const northTurnZ = (startPos.z < 0.6) ? -0.4 : startPos.z;
+        return [
+          new THREE.Vector3(aisleX, 0, northTurnZ),
+          new THREE.Vector3(aisleX, 0, 5.4),
+          new THREE.Vector3(0, 0, 5.4),
+          new THREE.Vector3(endPos.x, 0, endPos.z)
+        ];
+      } else {
+        return [
+          new THREE.Vector3(0, 0, 5.4),
+          new THREE.Vector3(endPos.x, 0, endPos.z)
+        ];
+      }
+    }
+
+    // Direct unobstructed path check
+    if (!lineIntersectsObstacle(startPos, endPos, TABLE_OBSTACLE)) {
+      return [new THREE.Vector3(endPos.x, 0, endPos.z)];
+    }
+
+    // Direct path intersects central table - route through designated open corridor
+    const aisleX = (startPos.x + endPos.x <= 0) ? -4.0 : 4.0;
+    const queue = [];
+
+    if (startPos.z < 0.65) {
+      // Start is North of table
+      queue.push(new THREE.Vector3(aisleX, 0, -0.4));
+      if (endPos.z > 4.1) {
+        queue.push(new THREE.Vector3(aisleX, 0, 5.2));
+      }
+    } else if (startPos.z > 4.1) {
+      // Start is South of table
+      queue.push(new THREE.Vector3(aisleX, 0, 5.2));
+      if (endPos.z < 0.65) {
+        queue.push(new THREE.Vector3(aisleX, 0, -0.4));
+      }
+    } else {
+      // Start is in side aisle alongside the table
+      const routeNorth = Math.abs(startPos.z - (-0.4)) + Math.abs(endPos.z - (-0.4)) <
+                         Math.abs(startPos.z - 5.2) + Math.abs(endPos.z - 5.2);
+      const intermediateZ = routeNorth ? -0.4 : 5.2;
+      queue.push(new THREE.Vector3(aisleX, 0, intermediateZ));
+      if ((endPos.z < 0.65 && intermediateZ > 4.1) || (endPos.z > 4.1 && intermediateZ < 0.65)) {
+        queue.push(new THREE.Vector3(aisleX, 0, routeNorth ? 5.2 : -0.4));
+      }
+    }
+
+    queue.push(new THREE.Vector3(endPos.x, 0, endPos.z));
+    return queue;
+  }
 
   let isFreeMode = true; // Agents move freely by default until assigned work
   const figures = [];
@@ -702,6 +810,9 @@ export function buildRealisticHqScene(canvas, options = {}) {
       currentPos: new THREE.Vector3(a.x, 0, a.z),
       targetPos: new THREE.Vector3(a.x, 0, a.z),
       targetRotY: a.rotY || 0,
+      pathQueue: [],
+      lastWatchdogPos: new THREE.Vector3(a.x, 0, a.z),
+      stuckTimer: 0,
       state: 'idle', // 'idle' | 'walking'
       idleTimer: 1.5 + idx * 1.8, // staggered initial movement
       walkCycle: Math.random() * 10,
@@ -736,7 +847,7 @@ export function buildRealisticHqScene(canvas, options = {}) {
 
       // 1. Check if clicked an Evidence or Clue Card on the Board
       if (cur.userData && (cur.userData.type === 'evidence' || cur.userData.type === 'clue' || cur.userData.type === 'docket')) {
-        targetCamPos.set(cur.position.x * 0.7, cur.position.y, cur.position.z + 2.8);
+        targetCamPos.set(cur.position.x * 0.75, cur.position.y, cur.position.z + 3.2);
         targetLookAt.set(cur.position.x, cur.position.y, cur.position.z);
         isTransitioning = true;
 
@@ -803,87 +914,99 @@ export function buildRealisticHqScene(canvas, options = {}) {
         if (officerChair) officerChair.update(false, false, dt);
 
         if (f.state === 'walking') {
-          // Route through intermediate corridor waypoint if path crosses central table
-          let dest = f.targetPos;
-          if (f.intermediatePos) {
-            const distToInter = Math.hypot(f.intermediatePos.x - f.currentPos.x, f.intermediatePos.z - f.currentPos.z);
-            if (distToInter > 0.35) {
-              dest = f.intermediatePos;
-            } else {
-              f.intermediatePos = null;
-            }
-          }
-
-          const dx = dest.x - f.currentPos.x;
-          const dz = dest.z - f.currentPos.z;
-          const dist = Math.hypot(dx, dz);
-
-          if (dist > 0.15) {
-            // Smoothly face walking direction
-            const moveAngle = Math.atan2(dx, dz);
-            let diffAngle = moveAngle - f.group.rotation.y;
-            while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
-            while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
-            f.group.rotation.y += diffAngle * 0.08;
-
-            // Advance position along corridor
-            const step = Math.min(f.speed * dt, dist);
-            f.currentPos.x += (dx / dist) * step;
-            f.currentPos.z += (dz / dist) * step;
-
-            // Physical repulsion from central briefing table (NEVER pass through table)
-            if (f.currentPos.x > -2.85 && f.currentPos.x < 2.85 && f.currentPos.z > 0.65 && f.currentPos.z < 3.55) {
-              f.currentPos.x = f.currentPos.x < 0 ? -3.05 : 3.05;
-            }
-
-            f.group.position.x = f.currentPos.x;
-            f.group.position.z = f.currentPos.z;
-
-            f.walkCycle += dt;
-            if (f.group.update) {
-              f.group.update(t, mouse, isSpeaking, true, f.walkCycle, false);
-            }
-          } else {
-            // Arrived at destination waypoint
+          if (!f.pathQueue || f.pathQueue.length === 0) {
+            // Reached corridor destination
             f.state = 'idle';
-            f.idleTimer = 4.5 + Math.random() * 6.0;
+            f.idleTimer = 4.0 + Math.random() * 5.0;
             if (f.group.update) {
               f.group.update(t, mouse, isSpeaking, false, 0, false);
+            }
+          } else {
+            const nextLeg = f.pathQueue[0];
+            const dx = nextLeg.x - f.currentPos.x;
+            const dz = nextLeg.z - f.currentPos.z;
+            const dist = Math.hypot(dx, dz);
+
+            if (dist < 0.22) {
+              f.pathQueue.shift();
+              if (f.pathQueue.length === 0) {
+                f.state = 'idle';
+                f.idleTimer = 4.0 + Math.random() * 5.0;
+                if (f.group.update) {
+                  f.group.update(t, mouse, isSpeaking, false, 0, false);
+                }
+              }
+            } else {
+              // Smoothly face walking direction
+              const moveAngle = Math.atan2(dx, dz);
+              let diffAngle = moveAngle - f.group.rotation.y;
+              while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
+              while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+              f.group.rotation.y += diffAngle * 0.1;
+
+              // Advance along designated open corridor
+              const step = Math.min(f.speed * dt, dist);
+              f.currentPos.x += (dx / dist) * step;
+              f.currentPos.z += (dz / dist) * step;
+
+              f.group.position.x = f.currentPos.x;
+              f.group.position.z = f.currentPos.z;
+
+              f.walkCycle += dt;
+              if (f.group.update) {
+                f.group.update(t, mouse, isSpeaking, true, f.walkCycle, false);
+              }
+
+              // Stuck Detection Watchdog (Never get stuck)
+              if (!f.lastWatchdogPos) {
+                f.lastWatchdogPos = new THREE.Vector3().copy(f.currentPos);
+                f.stuckTimer = 0;
+              }
+              const progressDist = Math.hypot(f.currentPos.x - f.lastWatchdogPos.x, f.currentPos.z - f.lastWatchdogPos.z);
+              if (progressDist < 0.04) {
+                f.stuckTimer += dt;
+                if (f.stuckTimer > 1.2) {
+                  // Abort blocked path and select a new open route
+                  f.pathQueue = [];
+                  f.state = 'idle';
+                  f.idleTimer = 0.5;
+                  f.stuckTimer = 0;
+                  f.lastWatchdogPos.copy(f.currentPos);
+                }
+              } else {
+                f.lastWatchdogPos.copy(f.currentPos);
+                f.stuckTimer = 0;
+              }
             }
           }
         } else {
           // Idle / inspecting board or documents
-          f.group.rotation.y = THREE.MathUtils.lerp(f.group.rotation.y, f.targetRotY, 0.05);
+          f.group.rotation.y = THREE.MathUtils.lerp(f.group.rotation.y, f.targetRotY, 0.06);
           if (f.group.update) {
             f.group.update(t, mouse, isSpeaking, false, 0, false);
           }
 
           f.idleTimer -= dt;
           if (f.idleTimer <= 0) {
-            // Pick next destination in open corridors
+            // Pick next open corridor destination
             const candidateWaypoints = officeWaypoints.filter(wp =>
               Math.hypot(wp.x - f.currentPos.x, wp.z - f.currentPos.z) > 2.5
             );
             const nextWp = candidateWaypoints[Math.floor(Math.random() * candidateWaypoints.length)] || officeWaypoints[0];
 
-            // If crossing the central table, insert intermediate corridor waypoint
-            const crossesCenter = (f.currentPos.z < 0.65 && nextWp.z > 3.55) || (f.currentPos.z > 3.55 && nextWp.z < 0.65);
-            if (crossesCenter) {
-              const aisleX = (f.currentPos.x <= 0 && nextWp.x <= 0) ? -3.8 : 3.8;
-              f.intermediatePos = new THREE.Vector3(aisleX, 0, 2.1);
-            } else {
-              f.intermediatePos = null;
-            }
-
             f.targetPos.set(nextWp.x, 0, nextWp.z);
             f.targetRotY = nextWp.rotY;
+            f.pathQueue = planPath(f.currentPos, nextWp, false);
             f.state = 'walking';
+            f.stuckTimer = 0;
+            if (f.lastWatchdogPos) f.lastWatchdogPos.copy(f.currentPos);
           }
         }
       } else {
         // Stationed at Assigned Work Desk
-        const isApproachingDesk = distToDesk < 1.8 && distToDesk > 0.15;
-        const isAtDesk = distToDesk <= 0.15;
+        const distToDesk = Math.hypot(f.homePos.x - f.currentPos.x, f.homePos.z - f.currentPos.z);
+        const isApproachingDesk = distToDesk < 1.8 && distToDesk > 0.2;
+        const isAtDesk = distToDesk <= 0.2 && (!f.pathQueue || f.pathQueue.length === 0);
 
         // Animate chair adjusting and pulling in/out
         if (officerChair) {
@@ -893,56 +1016,63 @@ export function buildRealisticHqScene(canvas, options = {}) {
         if (!isAtDesk) {
           f.isSitting = false;
 
-          // Route around central table if returning to station
-          let dest = f.homePos;
-          if (f.intermediatePos) {
-            const distToInter = Math.hypot(f.intermediatePos.x - f.currentPos.x, f.intermediatePos.z - f.currentPos.z);
-            if (distToInter > 0.35) {
-              dest = f.intermediatePos;
+          if (!f.pathQueue || f.pathQueue.length === 0) {
+            f.pathQueue = planPath(f.currentPos, f.homePos, f.name === 'ARGUS');
+          }
+
+          if (f.pathQueue && f.pathQueue.length > 0) {
+            const nextLeg = f.pathQueue[0];
+            const dx = nextLeg.x - f.currentPos.x;
+            const dz = nextLeg.z - f.currentPos.z;
+            const dist = Math.hypot(dx, dz);
+
+            if (dist < 0.22) {
+              f.pathQueue.shift();
             } else {
-              f.intermediatePos = null;
+              const moveAngle = Math.atan2(dx, dz);
+              let diffAngle = moveAngle - f.group.rotation.y;
+              while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
+              while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+              f.group.rotation.y += diffAngle * 0.1;
+
+              const step = Math.min(f.speed * dt, dist);
+              f.currentPos.x += (dx / dist) * step;
+              f.currentPos.z += (dz / dist) * step;
+
+              f.group.position.x = f.currentPos.x;
+              f.group.position.z = f.currentPos.z;
+
+              f.walkCycle += dt;
+              if (f.group.update) {
+                f.group.update(t, mouse, isSpeaking, true, f.walkCycle, false);
+              }
+
+              // Watchdog
+              if (!f.lastWatchdogPos) {
+                f.lastWatchdogPos = new THREE.Vector3().copy(f.currentPos);
+                f.stuckTimer = 0;
+              }
+              const progressDist = Math.hypot(f.currentPos.x - f.lastWatchdogPos.x, f.currentPos.z - f.lastWatchdogPos.z);
+              if (progressDist < 0.04) {
+                f.stuckTimer += dt;
+                if (f.stuckTimer > 1.2) {
+                  // Direct recovery back to assigned desk
+                  f.currentPos.copy(f.homePos);
+                  f.group.position.copy(f.homePos);
+                  f.pathQueue = [];
+                  f.stuckTimer = 0;
+                }
+              } else {
+                f.lastWatchdogPos.copy(f.currentPos);
+                f.stuckTimer = 0;
+              }
             }
-          } else {
-            const crossesCenter = (f.currentPos.z < 0.65 && f.homePos.z > 3.55) || (f.currentPos.z > 3.55 && f.homePos.z < 0.65);
-            if (crossesCenter && Math.abs(f.homePos.x) > 2.0) {
-              const aisleX = f.homePos.x < 0 ? -3.8 : 3.8;
-              f.intermediatePos = new THREE.Vector3(aisleX, 0, 2.1);
-              dest = f.intermediatePos;
-            }
-          }
-
-          const dx = dest.x - f.currentPos.x;
-          const dz = dest.z - f.currentPos.z;
-          const dist = Math.hypot(dx, dz);
-
-          // Smoothly face walking direction
-          const moveAngle = Math.atan2(dx, dz);
-          let diffAngle = moveAngle - f.group.rotation.y;
-          while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
-          while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
-          f.group.rotation.y += diffAngle * 0.08;
-
-          const step = Math.min(f.speed * dt, dist);
-          f.currentPos.x += (dx / dist) * step;
-          f.currentPos.z += (dz / dist) * step;
-
-          // Repel from central table
-          if (f.name !== 'ARGUS' && f.currentPos.x > -2.85 && f.currentPos.x < 2.85 && f.currentPos.z > 0.65 && f.currentPos.z < 3.55) {
-            f.currentPos.x = f.currentPos.x < 0 ? -3.05 : 3.05;
-          }
-
-          f.group.position.x = f.currentPos.x;
-          f.group.position.z = f.currentPos.z;
-
-          f.walkCycle += dt;
-          if (f.group.update) {
-            f.group.update(t, mouse, isSpeaking, true, f.walkCycle, false);
           }
         } else {
           // Detective is at desk: seated in adjusted chair typing/analyzing live system screen
           f.isSitting = true;
-          f.group.position.x = f.homePos.x;
-          f.group.position.z = f.homePos.z;
+          f.currentPos.copy(f.homePos);
+          f.group.position.copy(f.homePos);
           f.group.rotation.y = THREE.MathUtils.lerp(f.group.rotation.y, f.homeRotY, 0.08);
 
           if (f.group.update) {
@@ -982,21 +1112,23 @@ export function buildRealisticHqScene(canvas, options = {}) {
 
     // Smooth Camera Transition if moving to an officer or evidence card
     if (isTransitioning) {
-      camera.position.lerp(targetCamPos, 0.06);
-      controls.target.lerp(targetLookAt, 0.06);
-      if (camera.position.distanceTo(targetCamPos) < 0.08) {
+      camera.position.lerp(targetCamPos, 0.08);
+      controls.target.lerp(targetLookAt, 0.08);
+      if (camera.position.distanceTo(targetCamPos) < 0.04 && controls.target.distanceTo(targetLookAt) < 0.04) {
+        camera.position.copy(targetCamPos);
+        controls.target.copy(targetLookAt);
         isTransitioning = false;
       }
     }
 
     // Keep camera and controls target strictly inside the room for 360-degree rotation
     camera.position.x = THREE.MathUtils.clamp(camera.position.x, -10.8, 10.8);
-    camera.position.y = THREE.MathUtils.clamp(camera.position.y, 0.9, 7.0);
-    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -8.0, 8.8);
+    camera.position.y = THREE.MathUtils.clamp(camera.position.y, 0.9, 7.2);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -7.5, 8.8);
 
-    controls.target.x = THREE.MathUtils.clamp(controls.target.x, -5.5, 5.5);
-    controls.target.y = THREE.MathUtils.clamp(controls.target.y, 0.9, 4.8);
-    controls.target.z = THREE.MathUtils.clamp(controls.target.z, -5.5, 5.0);
+    controls.target.x = THREE.MathUtils.clamp(controls.target.x, -8.5, 8.5);
+    controls.target.y = THREE.MathUtils.clamp(controls.target.y, 0.8, 6.2);
+    controls.target.z = THREE.MathUtils.clamp(controls.target.z, -8.6, 6.5);
 
     controls.update();
     renderer.render(scene, camera);
@@ -1015,14 +1147,14 @@ export function buildRealisticHqScene(canvas, options = {}) {
     focusAgent: (agentName) => {
       const match = figures.find(x => x.name === agentName);
       if (match) {
-        targetCamPos.set(match.currentPos.x * 0.35, 6.5, match.currentPos.z + 5.0);
-        targetLookAt.set(match.currentPos.x, 1.8, match.currentPos.z);
+        targetCamPos.set(match.currentPos.x * 0.4, match.isSitting ? 3.2 : 3.8, match.currentPos.z + 4.2);
+        targetLookAt.set(match.currentPos.x, match.isSitting ? 1.6 : 2.0, match.currentPos.z);
         isTransitioning = true;
       }
     },
     focusBoard: () => {
-      targetCamPos.set(0, 4.4, -4.2);
-      targetLookAt.set(0, 4.3, -8.4);
+      targetCamPos.set(0, 4.3, -3.8);
+      targetLookAt.set(0, 4.3, -8.43);
       isTransitioning = true;
     },
     resetCamera: () => {
@@ -1035,13 +1167,20 @@ export function buildRealisticHqScene(canvas, options = {}) {
     },
     setFreeRoam: (free) => {
       isFreeMode = free;
-      if (!free) {
-        figures.forEach(f => {
+      figures.forEach(f => {
+        if (!free) {
+          f.isAssignedWork = true;
+          f.pathQueue = planPath(f.currentPos, f.homePos, f.name === 'ARGUS');
           f.state = 'walking';
-          f.targetPos.copy(f.homePos);
           f.targetRotY = f.homeRotY;
-        });
-      }
+        } else {
+          f.isAssignedWork = false;
+          f.isSitting = false;
+          f.state = 'idle';
+          f.idleTimer = 0.5 + Math.random() * 2.0;
+          f.pathQueue = [];
+        }
+      });
     },
     isFreeRoam: () => isFreeMode,
     assignWork: (agentName, isAssigned) => {
@@ -1049,9 +1188,14 @@ export function buildRealisticHqScene(canvas, options = {}) {
       if (f) {
         f.isAssignedWork = isAssigned;
         if (isAssigned) {
+          f.pathQueue = planPath(f.currentPos, f.homePos, f.name === 'ARGUS');
           f.state = 'walking';
-          f.targetPos.copy(f.homePos);
           f.targetRotY = f.homeRotY;
+        } else {
+          f.isSitting = false;
+          f.state = 'idle';
+          f.idleTimer = 0.5 + Math.random() * 2.0;
+          f.pathQueue = [];
         }
       }
     },
