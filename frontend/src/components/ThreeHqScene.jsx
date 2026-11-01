@@ -32,15 +32,17 @@ export default function ThreeHqScene({
   const [lightsOn, setLightsOn] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState('ARGUS');
+  const [isBoardFocused, setIsBoardFocused] = useState(false);
   const [activityText, setActivityText] = useState('Officers are moving freely through the bureau, inspecting case evidence.');
   
   // Selected evidence / card inspected on 3D board
   const [inspectedCard, setInspectedCard] = useState(null);
 
-  // Case details for the 3D board
+  // Case details for the 3D board (Strictly linked to case currently being worked on)
   const [activeCaseDetails, setActiveCaseDetails] = useState(null);
 
-  const activeCase = cases.length > 0 ? cases[0] : null;
+  const workingCase = cases.find(c => c.is_working_on === 1 || c.is_working_on === true) || null;
+  const activeCase = workingCase;
 
   const metrics = {
     openCases: cases.filter(c => c.status !== 'Solved').length,
@@ -58,16 +60,24 @@ export default function ThreeHqScene({
 
   // Fetch full details of active case to populate 3D board with live evidence and clues
   useEffect(() => {
-    if (!activeCase?.case_ref) return;
+    if (!activeCase?.case_ref) {
+      setActiveCaseDetails(null);
+      return;
+    }
 
-    fetch(`/api/cases/${activeCase.case_ref}`)
+    fetch(`/api/cases/${encodeURIComponent(activeCase.case_ref)}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
           setActiveCaseDetails(data);
+        } else {
+          setActiveCaseDetails(null);
         }
       })
-      .catch(err => console.warn('Could not fetch active case for 3D board:', err));
+      .catch(err => {
+        console.warn('Could not fetch active case for 3D board:', err);
+        setActiveCaseDetails(null);
+      });
   }, [activeCase?.case_ref]);
 
   useEffect(() => {
@@ -78,12 +88,14 @@ export default function ThreeHqScene({
       onAgentClick: (agentName) => {
         bureauAudio.telegraphBeep();
         setSelectedAgent(agentName);
+        setIsBoardFocused(false);
         setActivityText(`${agentName} selected. ${agentBios[agentName]}`);
         instance.focusAgent(agentName);
       },
       onEvidenceClick: (cardData) => {
         bureauAudio.typewriterClick();
         setInspectedCard(cardData);
+        setIsBoardFocused(true);
         if (cardData.type === 'evidence') {
           setActivityText(`Forensic evidence inspected: ${cardData.data?.original_name || 'File record'}`);
         } else if (cardData.type === 'clue') {
@@ -102,7 +114,7 @@ export default function ThreeHqScene({
     return () => {
       instance.destroy();
     };
-  }, [activeCaseDetails]);
+  }, [activeCaseDetails, activeCase]);
 
   useEffect(() => {
     if (hqInstanceRef.current && activeSpeaker) {
@@ -114,6 +126,7 @@ export default function ThreeHqScene({
   const handleSelectAgent = (agentName) => {
     bureauAudio.telegraphBeep();
     setSelectedAgent(agentName);
+    setIsBoardFocused(false);
     setActivityText(`${agentName} selected. ${agentBios[agentName]}`);
     if (hqInstanceRef.current) {
       hqInstanceRef.current.focusAgent(agentName);
@@ -151,6 +164,7 @@ export default function ThreeHqScene({
     bureauAudio.typewriterClick();
     setSelectedAgent('ARGUS');
     setInspectedCard(null);
+    setIsBoardFocused(false);
     if (hqInstanceRef.current) {
       hqInstanceRef.current.resetCamera();
     }
@@ -158,6 +172,7 @@ export default function ThreeHqScene({
 
   const focusBoard = () => {
     bureauAudio.typewriterClick();
+    setIsBoardFocused(true);
     if (hqInstanceRef.current) {
       hqInstanceRef.current.focusBoard();
     }
@@ -193,11 +208,17 @@ export default function ThreeHqScene({
         </button>
 
         <button
-          onClick={focusBoard}
-          className="western-btn"
-          title="Zoom camera onto Central Case Board"
+          onClick={() => {
+            if (isBoardFocused) {
+              resetView();
+            } else {
+              focusBoard();
+            }
+          }}
+          className={`western-btn ${isBoardFocused ? 'western-btn-gold' : ''}`}
+          title={isBoardFocused ? "Return camera to Office Overview" : "Zoom camera onto Central Case Board"}
         >
-          <span>Inspect Board</span>
+          <span>{isBoardFocused ? '↺ Exit Board' : 'Inspect Board'}</span>
         </button>
 
         <button

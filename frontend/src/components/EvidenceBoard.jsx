@@ -6,9 +6,14 @@ import {
   MapPin, User, FileText, Lightbulb, Award, PlayCircle
 } from 'lucide-react';
 
-export default function EvidenceBoard({ caseRef }) {
+export default function EvidenceBoard({ 
+  caseRef = null, 
+  caseTitle = '', 
+  onNavigateToCaseFiles, 
+  onNavigateToLab 
+}) {
   const [clues, setClues] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedClue, setSelectedClue] = useState(null);
   const [cardPositions, setCardPositions] = useState({});
   const [isPresenting, setIsPresenting] = useState(false);
@@ -20,7 +25,11 @@ export default function EvidenceBoard({ caseRef }) {
 
   // Fetch case data and deliberations
   const fetchCaseDetail = async () => {
-    if (!caseRef) return;
+    if (!caseRef) {
+      setCaseData(null);
+      setDeliberations([]);
+      return;
+    }
     try {
       const res = await fetch(`/api/cases/${encodeURIComponent(caseRef)}`);
       const data = await res.json();
@@ -35,6 +44,13 @@ export default function EvidenceBoard({ caseRef }) {
 
   // Fetch clues curated by agents
   const fetchClues = async () => {
+    if (!caseRef) {
+      setClues([]);
+      setCaseData(null);
+      setDeliberations([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       fetchCaseDetail();
@@ -45,16 +61,26 @@ export default function EvidenceBoard({ caseRef }) {
           ...c,
           connections: typeof c.connections === 'string' ? JSON.parse(c.connections || '[]') : (c.connections || [])
         })));
+      } else {
+        setClues([]);
       }
     } catch (e) {
       console.error('Failed to load clues:', e);
+      setClues([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (caseRef) fetchClues();
+    if (caseRef) {
+      fetchClues();
+    } else {
+      setClues([]);
+      setCaseData(null);
+      setDeliberations([]);
+      setLoading(false);
+    }
   }, [caseRef]);
 
   // Compute card pin centers relative to board container for SVG Red Yarn Lines
@@ -108,14 +134,18 @@ export default function EvidenceBoard({ caseRef }) {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-rye text-sm md:text-base text-[#f2e0be] tracking-wide">
-                CLUES & SUSPECT WEB — {caseRef}
+                {caseRef ? `CLUES & SUSPECT WEB — ${caseRef}${caseTitle ? ` · ${caseTitle}` : (caseData?.title ? ` · ${caseData.title}` : '')}` : 'CLUES & SUSPECT WEB — NO CASE CURRENTLY ACTIVE'}
               </h2>
-              <span className="text-[10px] font-elite px-2 py-0.5 rounded bg-[#4a2e19] text-[#ffe6b8] border border-[#a67946]">
-                {clues.length} NODES PINNED
+              <span className={`text-[10px] font-elite px-2 py-0.5 rounded border ${
+                caseRef ? 'bg-[#4a2e19] text-[#ffe6b8] border-[#a67946]' : 'bg-[#2b190e] text-[#8e6e4d] border-[#593920]'
+              }`}>
+                {caseRef ? `${clues.length} NODES PINNED` : '0 NODES PINNED'}
               </span>
             </div>
             <p className="text-[10px] font-elite text-[#bd9f6f]">
-              Autonomous Red Yarn Flowchart · Evidence-to-Verdict Deductive Matrix
+              {caseRef 
+                ? 'Autonomous Red Yarn Flowchart · Evidence-to-Verdict Deductive Matrix' 
+                : 'Autonomous Red Yarn Flowchart · Awaiting Active Case Assignment in Bureau Dossier Ledger'}
             </p>
           </div>
         </div>
@@ -125,13 +155,19 @@ export default function EvidenceBoard({ caseRef }) {
           {/* Present the Case Button */}
           <button
             onClick={() => {
+              if (!caseRef) return;
               bureauAudio.conclaveChime();
               setIsPresenting(true);
             }}
-            className="western-btn-gold text-[11px] py-1 px-3.5 font-bold flex items-center gap-1.5 shadow"
-            title="Begin autonomous cinematic detective case presentation"
+            disabled={!caseRef}
+            className={`text-[11px] py-1 px-3.5 font-bold flex items-center gap-1.5 shadow ${
+              caseRef 
+                ? 'western-btn-gold cursor-pointer' 
+                : 'western-btn opacity-40 cursor-not-allowed text-[#826243]'
+            }`}
+            title={caseRef ? "Begin autonomous cinematic detective case presentation" : "Assign and toggle Work On for a case in Case Files to present"}
           >
-            <PlayCircle size={14} className="text-[#3b2413]" />
+            <PlayCircle size={14} className={caseRef ? 'text-[#3b2413]' : 'text-[#826243]'} />
             <span>Present the Case</span>
           </button>
 
@@ -158,14 +194,14 @@ export default function EvidenceBoard({ caseRef }) {
       <div 
         ref={boardRef}
         onScroll={updatePinPositions}
-        className="relative flex-1 bg-[#1a120b] overflow-auto p-8"
+        className="relative flex-1 bg-[#150d08] overflow-auto p-8"
         style={{
-          backgroundImage: `
-            radial-gradient(circle at 50% 50%, rgba(20, 14, 9, 0.45) 0%, rgba(8, 5, 3, 0.95) 100%),
-            url('https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=1200&auto=format&fit=crop')
-          `,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
+          background: `
+            radial-gradient(ellipse at 50% 30%, rgba(68, 44, 28, 0.45) 0%, rgba(20, 13, 8, 0.92) 75%, rgba(10, 7, 4, 0.98) 100%),
+            repeating-radial-gradient(circle at 20% 30%, rgba(138, 92, 53, 0.16) 0px, transparent 3px),
+            repeating-radial-gradient(circle at 80% 70%, rgba(105, 69, 39, 0.14) 0px, transparent 4px),
+            linear-gradient(135deg, #2c1d12 0%, #1f130a 50%, #130b06 100%)
+          `
         }}
       >
         {/* Corkboard Texture Vignette */}
@@ -292,13 +328,47 @@ export default function EvidenceBoard({ caseRef }) {
           })}
         </div>
 
-        {clues.length === 0 && !loading && (
+        {/* Blank State if no case is currently active/worked on */}
+        {!caseRef && (
+          <div className="flex flex-col items-center justify-center h-full min-h-[460px] text-center p-8 max-w-lg mx-auto relative z-20 font-elite">
+            <div className="w-16 h-16 rounded-full border-2 border-[#855e37] bg-[#24170f]/90 flex items-center justify-center mb-4 shadow-2xl">
+              <Pin size={26} className="text-[#c69a50]" />
+            </div>
+            <h3 className="font-rye text-lg text-[#f2e0be] mb-2 tracking-wide">
+              INVESTIGATION WEB BLANK
+            </h3>
+            <p className="text-xs text-[#bd9f6f] leading-relaxed mb-6">
+              No case is currently being worked on by the bureau. Open the Active Bureau Dossier Ledger, select a case, and toggle <strong className="text-[#ffe6b8]">"Work On"</strong> to mobilize the detectives, analyze forensic evidence, and construct the deductive red yarn flowchart.
+            </p>
+            <button
+              onClick={() => {
+                bureauAudio.typewriterClick();
+                if (typeof onNavigateToCaseFiles === 'function') onNavigateToCaseFiles();
+              }}
+              className="western-btn text-xs py-1.5 px-4 shadow-md"
+            >
+              Open Bureau Dossier Ledger
+            </button>
+          </div>
+        )}
+
+        {/* When case is active but conclave hasn't generated clues yet */}
+        {caseRef && clues.length === 0 && !loading && (
           <div className="relative z-20 text-center py-28 text-[#b89569] font-elite max-w-md mx-auto">
             <Pin size={32} className="mx-auto text-[#c69a50] mb-3 opacity-60" />
-            <h3 className="font-rye text-base text-[#f0d9ad] mb-1">Investigation Board Clear</h3>
-            <p className="text-xs leading-relaxed text-[#cbb18a]">
+            <h3 className="font-rye text-base text-[#f0d9ad] mb-1">Investigation Web Clear</h3>
+            <p className="text-xs leading-relaxed text-[#cbb18a] mb-5">
               No evidence cards or suspects are currently pinned to this docket. Run the <strong>Autonomous Bureau Conclave</strong> in the Investigation Lab to have the 5 detective officers analyze the case, string the red yarn threads, and document findings here.
             </p>
+            <button
+              onClick={() => {
+                bureauAudio.typewriterClick();
+                if (typeof onNavigateToLab === 'function') onNavigateToLab(caseRef);
+              }}
+              className="western-btn text-xs py-1.5 px-4 shadow-md"
+            >
+              Open Investigation Lab
+            </button>
           </div>
         )}
       </div>

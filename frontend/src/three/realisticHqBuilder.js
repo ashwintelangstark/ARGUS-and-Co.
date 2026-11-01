@@ -269,121 +269,132 @@ export function buildRealisticHqScene(canvas, options = {}) {
   logoBezel.position.set(0, 6.9, -8.43);
   scene.add(logoBezel);
 
-  // Central Case Docket Banner pinned at top of the board
-  const currentCase = initialCase || {
-    case_ref: 'ARG-1891-001',
-    title: 'The Vanishing Ledger of Silvercreek Trust',
-    priority: 'High',
-    status: 'Active',
-    notes: 'Subterranean repository vault breached at 02:40 AM without acoustic alarm. Supervisor key deployed with RF carrier suppression.'
-  };
+  // Central Case Docket Banner & Evidence Cards (ONLY if real case is being worked on)
+  const interactiveCards = [];
+  const boardYarnPoints = [];
 
-  const docketTex = createDocketTexture(
-    currentCase.case_ref,
-    currentCase.title,
-    currentCase.priority,
-    currentCase.status,
-    currentCase.notes
-  );
-
-  const docketMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.2, 1.8),
-    new THREE.MeshStandardMaterial({ map: docketTex, roughness: 0.85 })
-  );
-  docketMesh.position.set(0, 5.0, -8.36);
-  docketMesh.castShadow = true;
-  docketMesh.userData = { type: 'docket', caseData: currentCase };
-  scene.add(docketMesh);
-
-  // Brass pins for docket
-  cyl(scene, 0.04, 0.04, 0.05, brass, -1.95, 5.8, -8.32);
-  cyl(scene, 0.04, 0.04, 0.05, brass, 1.95, 5.8, -8.32);
-
-  // Dynamic Evidence Cards on Board
-  const interactiveCards = [docketMesh];
-  const boardYarnPoints = [
-    new THREE.Vector3(0, 4.4, -8.32) // Docket center
-  ];
-
-  // Default evidence items if none provided
-  const evidenceItems = (evidenceList && evidenceList.length > 0) ? evidenceList : [
-    { id: 1, original_name: 'vault_access_logs.csv', file_type: 'CSV', hash_sha256: '8a4f9b2d3c91e704b2a8d1e3c79a0b4e', created_at: '1891-10-24 02:41:19' },
-    { id: 2, original_name: 'audio_wiretap_intercept.wav', file_type: 'AUDIO', hash_sha256: 'c3e4a1b8d79f0412e8b2a3c4d5e6f7a8', created_at: '1891-10-24 03:15:00' },
-    { id: 3, original_name: 'pier9_manifest_photo.jpg', file_type: 'IMAGE', hash_sha256: 'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', created_at: '1891-10-24 05:20:45' }
-  ];
-
-  // Pin evidence cards on left and right flanks of the board
-  evidenceItems.slice(0, 4).forEach((ev, idx) => {
-    const isLeft = (idx % 2 === 0);
-    const row = Math.floor(idx / 2);
-    const ex = isLeft ? -3.4 + (row * 0.2) : 3.4 - (row * 0.2);
-    const ey = 3.3 - (row * 1.35);
-    const ez = -8.35;
-
-    const evTex = createEvidenceTexture(
-      idx + 1,
-      ev.original_name,
-      ev.file_type,
-      ev.hash_sha256,
-      ev.created_at
+  if (initialCase && initialCase.case_ref) {
+    const currentCase = initialCase;
+    const docketTex = createDocketTexture(
+      currentCase.case_ref,
+      currentCase.title || 'Untitled Case',
+      currentCase.priority || 'Standard',
+      currentCase.status || 'Active',
+      currentCase.notes || ''
     );
 
-    const evMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.5, 1.15),
-      new THREE.MeshStandardMaterial({ map: evTex, roughness: 0.88 })
+    const docketMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.2, 1.8),
+      new THREE.MeshStandardMaterial({ map: docketTex, roughness: 0.85 })
     );
-    evMesh.position.set(ex, ey, ez);
-    evMesh.rotation.z = (idx % 2 === 0 ? 0.03 : -0.04);
-    evMesh.castShadow = true;
-    evMesh.userData = { type: 'evidence', data: ev };
-    scene.add(evMesh);
-    interactiveCards.push(evMesh);
+    docketMesh.position.set(0, 5.0, -8.36);
+    docketMesh.castShadow = true;
+    docketMesh.userData = { type: 'docket', caseData: currentCase };
+    scene.add(docketMesh);
+    interactiveCards.push(docketMesh);
 
-    // Pushpin
-    const pin = cyl(scene, 0.035, 0.035, 0.05, brass, ex, ey + 0.52, ez + 0.03);
-    boardYarnPoints.push(new THREE.Vector3(ex, ey + 0.45, ez + 0.02));
-  });
+    // Brass pins for docket
+    cyl(scene, 0.04, 0.04, 0.05, brass, -1.95, 5.8, -8.32);
+    cyl(scene, 0.04, 0.04, 0.05, brass, 1.95, 5.8, -8.32);
 
-  // Suspects & Clues Pinned along center-lower row
-  const cluesData = (cluesList && cluesList.length > 0) ? cluesList : [
-    { id: 1, title: 'Suspect: Elias Vance', category: 'SUSPECT', description: 'Railway transit punch logged 2 miles from claimed off-duty location.', is_hypothesis: false },
-    { id: 2, title: 'Pier 9 Cargo Manifest', category: 'LOCATION', description: 'Port registry entries show undeclared crated machinery loaded onto vessel.', is_hypothesis: false },
-    { id: 3, title: 'Inside Accomplice Ring', category: 'HYPOTHESIS', description: 'Dual supervisor key deployed simultaneously with acoustic suppression.', is_hypothesis: true }
-  ];
+    boardYarnPoints.push(new THREE.Vector3(0, 4.4, -8.32)); // Docket center
 
-  cluesData.slice(0, 3).forEach((clue, idx) => {
-    const cx = -1.6 + (idx * 1.6);
-    const cy = 2.85 + (Math.sin(idx * 2) * 0.15);
-    const cz = -8.35;
+    // Real Evidence Cards on Board (ONLY if real evidence files exist)
+    const realEvidence = Array.isArray(evidenceList) ? evidenceList : [];
+    realEvidence.slice(0, 4).forEach((ev, idx) => {
+      const isLeft = (idx % 2 === 0);
+      const row = Math.floor(idx / 2);
+      const ex = isLeft ? -3.4 + (row * 0.2) : 3.4 - (row * 0.2);
+      const ey = 3.3 - (row * 1.35);
+      const ez = -8.35;
 
-    const clueTex = createSuspectTexture(clue.title, clue.category, clue.description, clue.is_hypothesis);
-    const clueMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.4, 1.1),
-      new THREE.MeshStandardMaterial({ map: clueTex, roughness: 0.85 })
-    );
-    clueMesh.position.set(cx, cy, cz);
-    clueMesh.rotation.z = (idx % 2 === 0 ? -0.025 : 0.03);
-    clueMesh.castShadow = true;
-    clueMesh.userData = { type: 'clue', data: clue };
-    scene.add(clueMesh);
-    interactiveCards.push(clueMesh);
+      const evTex = createEvidenceTexture(
+        idx + 1,
+        ev.original_name || 'Evidence File',
+        ev.file_type || 'DATA',
+        ev.hash_sha256 || '',
+        ev.created_at || ''
+      );
 
-    cyl(scene, 0.035, 0.035, 0.05, brass, cx, cy + 0.50, cz + 0.03);
-    boardYarnPoints.push(new THREE.Vector3(cx, cy + 0.42, cz + 0.02));
-  });
+      const evMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.5, 1.15),
+        new THREE.MeshStandardMaterial({ map: evTex, roughness: 0.88 })
+      );
+      evMesh.position.set(ex, ey, ez);
+      evMesh.rotation.z = (idx % 2 === 0 ? 0.03 : -0.04);
+      evMesh.castShadow = true;
+      evMesh.userData = { type: 'evidence', data: ev };
+      scene.add(evMesh);
+      interactiveCards.push(evMesh);
 
-  // Interconnected Red Investigation Yarn Strings
-  const yarnMat = new THREE.LineBasicMaterial({ color: 0x9e2417, linewidth: 2 });
-  if (boardYarnPoints.length >= 2) {
-    for (let i = 1; i < boardYarnPoints.length; i++) {
-      const pts = [boardYarnPoints[0], boardYarnPoints[i]];
-      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), yarnMat));
+      // Pushpin
+      cyl(scene, 0.035, 0.035, 0.05, brass, ex, ey + 0.52, ez + 0.03);
+      boardYarnPoints.push(new THREE.Vector3(ex, ey + 0.45, ez + 0.02));
+    });
 
-      if (i > 1 && i % 2 === 0) {
-        const crossPts = [boardYarnPoints[i - 1], boardYarnPoints[i]];
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(crossPts), yarnMat));
+    // Real Suspects & Clues Pinned along center-lower row (ONLY if real clues exist)
+    const realClues = Array.isArray(cluesList) ? cluesList : [];
+    realClues.slice(0, 3).forEach((clue, idx) => {
+      const cx = -1.6 + (idx * 1.6);
+      const cy = 2.85 + (Math.sin(idx * 2) * 0.15);
+      const cz = -8.35;
+
+      const clueTex = createSuspectTexture(
+        clue.title || 'Clue Lead',
+        clue.category || 'CLUE',
+        clue.description || '',
+        Boolean(clue.is_hypothesis)
+      );
+      const clueMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.4, 1.1),
+        new THREE.MeshStandardMaterial({ map: clueTex, roughness: 0.85 })
+      );
+      clueMesh.position.set(cx, cy, cz);
+      clueMesh.rotation.z = (idx % 2 === 0 ? -0.025 : 0.03);
+      clueMesh.castShadow = true;
+      clueMesh.userData = { type: 'clue', data: clue };
+      scene.add(clueMesh);
+      interactiveCards.push(clueMesh);
+
+      cyl(scene, 0.035, 0.035, 0.05, brass, cx, cy + 0.50, cz + 0.03);
+      boardYarnPoints.push(new THREE.Vector3(cx, cy + 0.42, cz + 0.02));
+    });
+
+    // Interconnected Red Investigation Yarn Strings
+    const yarnMat = new THREE.LineBasicMaterial({ color: 0x9e2417, linewidth: 2 });
+    if (boardYarnPoints.length >= 2) {
+      for (let i = 1; i < boardYarnPoints.length; i++) {
+        const pts = [boardYarnPoints[0], boardYarnPoints[i]];
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), yarnMat));
+
+        if (i > 1 && i % 2 === 0) {
+          const crossPts = [boardYarnPoints[i - 1], boardYarnPoints[i]];
+          scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(crossPts), yarnMat));
+        }
       }
     }
+  } else {
+    // When no case is currently being worked on: The board remains completely blank!
+    // A clean vintage brass docket watermark indicates standby state
+    const blankNotice = createDocketTexture(
+      'BUREAU RECORD',
+      'AWAITING ACTIVE CASE ASSIGNMENT',
+      'STANDBY',
+      'IDLE',
+      'No case is currently being worked on by the bureau. Open the Active Bureau Dossier Ledger and toggle "Work On" to mobilize the detectives, pin evidence, and plot the deductive yarn flowchart here.'
+    );
+    const noticeMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.8, 1.7),
+      new THREE.MeshStandardMaterial({ map: blankNotice, roughness: 0.85, opacity: 0.82, transparent: true })
+    );
+    noticeMesh.position.set(0, 4.3, -8.38);
+    noticeMesh.castShadow = true;
+    noticeMesh.userData = { type: 'docket', caseData: { title: 'Awaiting Active Case Assignment', notes: 'No case is currently being worked on.' } };
+    scene.add(noticeMesh);
+    interactiveCards.push(noticeMesh);
+
+    cyl(scene, 0.035, 0.035, 0.04, brass, -2.2, 5.0, -8.34);
+    cyl(scene, 0.035, 0.035, 0.04, brass, 2.2, 5.0, -8.34);
   }
 
   // Western Desks, CRT monitors, and Chairs
@@ -851,6 +862,13 @@ export function buildRealisticHqScene(canvas, options = {}) {
         targetLookAt.set(cur.position.x, cur.position.y, cur.position.z);
         isTransitioning = true;
 
+        // Stop 360-degree auto movement while inspecting board card
+        controls.autoRotate = false;
+        controls.enableRotate = false;
+        controls.enablePan = true;
+        controls.minDistance = 1.8;
+        controls.maxDistance = 6.0;
+
         if (typeof onEvidenceClick === 'function') {
           onEvidenceClick(cur.userData);
         }
@@ -1150,17 +1168,36 @@ export function buildRealisticHqScene(canvas, options = {}) {
         targetCamPos.set(match.currentPos.x * 0.4, match.isSitting ? 3.2 : 3.8, match.currentPos.z + 4.2);
         targetLookAt.set(match.currentPos.x, match.isSitting ? 1.6 : 2.0, match.currentPos.z);
         isTransitioning = true;
+
+        // Restore 360-degree rotation when focusing an agent
+        controls.enableRotate = true;
+        controls.enablePan = true;
+        controls.minDistance = 2.0;
+        controls.maxDistance = 12.0;
       }
     },
     focusBoard: () => {
       targetCamPos.set(0, 4.3, -3.8);
       targetLookAt.set(0, 4.3, -8.43);
       isTransitioning = true;
+
+      // Stop 360-degree auto movement and rotation while on the board
+      controls.autoRotate = false;
+      controls.enableRotate = false; // Strictly locked flat inspection of board
+      controls.enablePan = true;    // Allows panning across pinned cards
+      controls.minDistance = 1.8;
+      controls.maxDistance = 6.0;
     },
     resetCamera: () => {
       targetCamPos.copy(baseCamPos);
       targetLookAt.copy(baseLookAt);
       isTransitioning = true;
+
+      // Restore full 360-degree rotation when returning to office overview
+      controls.enableRotate = true;
+      controls.enablePan = true;
+      controls.minDistance = 2.0;
+      controls.maxDistance = 12.0;
     },
     setActiveSpeaker: (agentName) => {
       activeSpeakerName = agentName;

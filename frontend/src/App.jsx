@@ -46,6 +46,8 @@ export default function App() {
     setActiveView('reports');
   };
 
+  const workingCase = cases.find(c => c.is_working_on === 1 || c.is_working_on === true) || null;
+
   return (
     <div id="app-container">
       {/* Top Navigation */}
@@ -75,7 +77,7 @@ export default function App() {
         {activeView === 'lab' && (
           <InvestigationLab
             cases={cases}
-            selectedCaseRef={selectedCaseRef}
+            selectedCaseRef={selectedCaseRef || workingCase?.case_ref || ''}
             onCaseChange={(ref) => setSelectedCaseRef(ref)}
             onOpenOfficerStudio={(agentId) => setInspectingAgent(agentId)}
             onViewReports={handleViewReports}
@@ -84,7 +86,13 @@ export default function App() {
 
         {activeView === 'clues' && (
           <EvidenceBoard
-            caseRef={selectedCaseRef || (cases[0]?.case_ref || 'ARG-1891-001')}
+            caseRef={workingCase?.case_ref || null}
+            caseTitle={workingCase?.title || ''}
+            onNavigateToCaseFiles={() => setActiveView('casefiles')}
+            onNavigateToLab={(ref) => {
+              setSelectedCaseRef(ref);
+              setActiveView('lab');
+            }}
           />
         )}
 
