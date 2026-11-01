@@ -98,16 +98,21 @@ export default function InvestigationLab({
   };
 
   // Launch Autonomous Bureau Conclave
-  const handleLaunchConclave = async () => {
+  const handleLaunchConclave = async (isReAnalysis = false) => {
     if (!selectedCaseRef || isConclaveRunning) return;
 
     setIsConclaveRunning(true);
-    setStatusMessage('Convening all 5 Bureau Officers for autonomous investigation...');
+    setStatusMessage(isReAnalysis 
+      ? 'Re-convening all 5 Bureau Officers under alternative investigative vector...'
+      : 'Convening all 5 Bureau Officers for autonomous investigation...'
+    );
     bureauAudio.conclaveChime();
 
     try {
       const res = await fetch(`/api/cases/${encodeURIComponent(selectedCaseRef)}/conclave`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isReAnalysis })
       });
       const data = await res.json();
       if (!data.success) {
@@ -270,7 +275,7 @@ export default function InvestigationLab({
             {/* Launch Conclave Action */}
             <div className="pt-4 border-t border-[#96744c]/40 mt-4 space-y-2">
               <button
-                onClick={handleLaunchConclave}
+                onClick={() => handleLaunchConclave(false)}
                 disabled={!selectedCaseRef || isConclaveRunning}
                 className="w-full western-btn-gold py-2.5 font-elite text-xs font-bold rounded flex items-center justify-center gap-2 shadow-md"
               >
@@ -287,7 +292,18 @@ export default function InvestigationLab({
                 )}
               </button>
 
-              <div className="text-[10px] font-elite text-[#6b4e33] flex items-center justify-between">
+              {/* Re-Analyse Case with Alternative Vector */}
+              <button
+                onClick={() => handleLaunchConclave(true)}
+                disabled={!selectedCaseRef || isConclaveRunning}
+                className="w-full western-btn py-2 text-xs font-elite font-bold rounded flex items-center justify-center gap-1.5 border-[#8a5d35] hover:border-[#c69a50]"
+                title="Discard baseline assumptions and re-analyse case using contrarian forensic and OSINT vector"
+              >
+                <RefreshCw size={12} className={isConclaveRunning ? "animate-spin" : ""} />
+                <span>Re-Analyse Case (Alternative Approach)</span>
+              </button>
+
+              <div className="text-[10px] font-elite text-[#6b4e33] flex items-center justify-between pt-1">
                 <span className="truncate max-w-[280px]">Status: {statusMessage}</span>
                 {deliberations.length > 0 && (
                   <button 

@@ -29,6 +29,7 @@ export default function ThreeHqScene({
   const hqInstanceRef = useRef(null);
 
   const [isFreeRoam, setIsFreeRoam] = useState(true);
+  const [lightsOn, setLightsOn] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState('ARGUS');
   const [activityText, setActivityText] = useState('Officers are moving freely through the bureau, inspecting case evidence.');
@@ -132,6 +133,20 @@ export default function ThreeHqScene({
     bureauAudio.typewriterClick();
   };
 
+  const toggleLights = () => {
+    bureauAudio.typewriterClick();
+    if (hqInstanceRef.current) {
+      const state = hqInstanceRef.current.toggleLights();
+      setLightsOn(state);
+      setActivityText(state 
+        ? 'Bureau lanterns and chandeliers illuminated.' 
+        : 'Office lanterns extinguished. Dark noir night mode active.'
+      );
+    } else {
+      setLightsOn(prev => !prev);
+    }
+  };
+
   const resetView = () => {
     bureauAudio.typewriterClick();
     setSelectedAgent('ARGUS');
@@ -161,6 +176,14 @@ export default function ThreeHqScene({
 
       {/* HQ Tools */}
       <div className="hq-tools">
+        <button
+          onClick={toggleLights}
+          className={`western-btn ${lightsOn ? 'western-btn-gold' : ''}`}
+          title={lightsOn ? "Switch off office lights (Atmospheric Noir)" : "Switch on office lights (Full Daylight)"}
+        >
+          <span>{lightsOn ? '💡 Lights: ON' : '🌑 Lights: OFF'}</span>
+        </button>
+
         <button
           onClick={toggleFreeRoam}
           className={`western-btn ${isFreeRoam ? 'western-btn-gold' : ''}`}

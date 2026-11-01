@@ -177,6 +177,63 @@ app.delete('/api/cases/:caseRef', (req, res) => {
   }
 });
 
+// Toggle Work On / Work Off for a case dossier
+app.post('/api/cases/:caseRef/work', (req, res) => {
+  try {
+    const { caseRef } = req.params;
+    const { isWorking } = req.body;
+
+    const caseData = db.prepare('SELECT id, title FROM cases WHERE case_ref = ?').get(caseRef);
+    if (!caseData) return res.status(404).json({ success: false, error: 'Case not found' });
+
+    if (isWorking) {
+      // Set all other cases to 0, and this one to 1
+      db.prepare(`UPDATE cases SET is_working_on = 0`).run();
+      db.prepare(`UPDATE cases SET is_working_on = 1, updated_at = CURRENT_TIMESTAMP WHERE case_ref = ?`).run(caseRef);
+      db.prepare(`
+        INSERT INTO audit_trail (case_ref, officer, action, details)
+        VALUES (?, ?, ?, ?)
+      `).run(caseRef, 'ARGUS', 'WORK_ON', `Active investigation mobilized for case ${caseRef}: "${caseData.title}".`);
+    } else {
+      db.prepare(`UPDATE cases SET is_working_on = 0, updated_at = CURRENT_TIMESTAMP WHERE case_ref = ?`).run(caseRef);
+      db.prepare(`
+        INSERT INTO audit_trail (case_ref, officer, action, details)
+        VALUES (?, ?, ?, ?)
+      `).run(caseRef, 'ARGUS', 'WORK_OFF', `Active investigation stood down for case ${caseRef}.`);
+    }
+
+    res.json({ success: true, caseRef, is_working_on: isWorking ? 1 : 0 });
+  } catch (err) {
+    console.error('Error toggling case work:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// End and Archive Case
+app.post('/api/cases/:caseRef/archive', (req, res) => {
+  try {
+    const { caseRef } = req.params;
+    const caseData = db.prepare('SELECT id, title FROM cases WHERE case_ref = ?').get(caseRef);
+    if (!caseData) return res.status(404).json({ success: false, error: 'Case not found' });
+
+    db.prepare(`
+      UPDATE cases 
+      SET status = 'Solved', is_working_on = 0, updated_at = CURRENT_TIMESTAMP 
+      WHERE case_ref = ?
+    `).run(caseRef);
+
+    db.prepare(`
+      INSERT INTO audit_trail (case_ref, officer, action, details)
+      VALUES (?, ?, ?, ?)
+    `).run(caseRef, 'ARGUS', 'CASE_ARCHIVED', `Case dossier "${caseData.title}" sealed and filed into permanent archives.`);
+
+    res.json({ success: true, message: `Case ${caseRef} has been sealed and archived.` });
+  } catch (err) {
+    console.error('Error archiving case:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ==========================================
 // ROUTES: EVIDENCE
 // ==========================================
@@ -390,12 +447,24 @@ function broadcastToCase(caseRef, event, data) {
   }
 }
 
-// Trigger Bureau Conclave investigation
+// Trigger Bureau Conclave investigation (or re-analysis)
 app.post('/api/cases/:caseRef/conclave', async (req, res) => {
   const { caseRef } = req.params;
+  const { isReAnalysis = false, approach = null } = req.body || {};
+
   try {
+    // When conclave starts, mark case as actively being worked on
+    db.prepare(`UPDATE cases SET is_working_on = 0`).run();
+    db.prepare(`
+      UPDATE cases 
+      SET is_working_on = 1, conclave_count = COALESCE(conclave_count, 0) + 1, updated_at = CURRENT_TIMESTAMP 
+      WHERE case_ref = ?
+    `).run(caseRef);
+
     runBureauConclave({
       caseRef,
+      isReAnalysis,
+      approach,
       onProgress: (event, payload) => {
         broadcastToCase(caseRef, event, payload);
       }
@@ -407,7 +476,10 @@ app.post('/api/cases/:caseRef/conclave', async (req, res) => {
     res.json({
       success: true,
       caseRef,
-      message: 'Bureau Conclave convened. Real-time deliberations streaming on /api/cases/:caseRef/stream.'
+      isReAnalysis,
+      message: isReAnalysis
+        ? 'Bureau Conclave re-convened with alternative analytical vector.'
+        : 'Bureau Conclave convened. Real-time deliberations streaming on /api/cases/:caseRef/stream.'
     });
   } catch (err) {
     console.error('Error starting conclave:', err);

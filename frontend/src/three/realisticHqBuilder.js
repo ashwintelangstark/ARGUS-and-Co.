@@ -72,6 +72,33 @@ export function buildRealisticHqScene(canvas, options = {}) {
   candle.position.set(0, 3.5, 2.5);
   scene.add(candle);
 
+  // Bureau Lighting State (Lights Switch)
+  let areLightsOn = true;
+
+  function applyLightSwitch(on) {
+    areLightsOn = on;
+    if (on) {
+      hemiLight.intensity = 1.8;
+      sunLight.intensity = 3.2;
+      lanternLeft.intensity = 24;
+      lanternRight.intensity = 20;
+      candle.intensity = 14;
+      renderer.toneMappingExposure = 1.15;
+      scene.background = new THREE.Color(0x24170f);
+      scene.fog.color.setHex(0x24170f);
+    } else {
+      // Atmospheric noir darkness in headquarters
+      hemiLight.intensity = 0.25;
+      sunLight.intensity = 0.2;
+      lanternLeft.intensity = 4.0;
+      lanternRight.intensity = 4.0;
+      candle.intensity = 7.0;
+      renderer.toneMappingExposure = 0.70;
+      scene.background = new THREE.Color(0x0c0704);
+      scene.fog.color.setHex(0x0c0704);
+    }
+  }
+
   // Time-of-Day Configurations
   const lightingProfiles = {
     dawn: {
@@ -732,6 +759,15 @@ export function buildRealisticHqScene(canvas, options = {}) {
       }
     },
     getActiveLightingMode: () => activeTimeMode,
+    toggleLights: () => {
+      applyLightSwitch(!areLightsOn);
+      return areLightsOn;
+    },
+    setLights: (on) => {
+      applyLightSwitch(on);
+      return areLightsOn;
+    },
+    areLightsOn: () => areLightsOn,
     setPause: (paused) => {
       isRunning = !paused;
       if (isRunning) animate();

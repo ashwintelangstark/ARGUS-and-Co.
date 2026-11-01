@@ -150,6 +150,17 @@ export function initDatabase() {
     );
   `);
 
+  // Safe migrations for runtime schema evolution
+  try {
+    db.exec(`ALTER TABLE cases ADD COLUMN is_working_on INTEGER DEFAULT 0;`);
+  } catch (e) {}
+  try {
+    db.exec(`ALTER TABLE cases ADD COLUMN investigation_approach TEXT DEFAULT 'Standard Forensic Vector';`);
+  } catch (e) {}
+  try {
+    db.exec(`ALTER TABLE cases ADD COLUMN conclave_count INTEGER DEFAULT 0;`);
+  } catch (e) {}
+
   seedDefaultData();
 }
 

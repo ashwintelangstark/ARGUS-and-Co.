@@ -610,3 +610,38 @@ input:focus, textarea:focus, select:focus {
     display: none;
   }
 }
+
+/* Print / PDF Export Styles for ARGUS and Co. Dossier */
+@media print {
+  body, html, #root, #app-container {
+    background: #ffffff !important;
+    color: #1a120c !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: 100% !important;
+  }
+
+  .topbar, .footer-strip, .hq-tools, button, .print\:hidden {
+    display: none !important;
+  }
+
+  .main-viewport {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .printable-dossier {
+    background: #ffffff !important;
+    color: #1a120c !important;
+    border: 2px solid #3d2412 !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    padding: 24px !important;
+    page-break-inside: auto;
+  }
+
+  .printable-dossier * {
+    color: #1a120c !important;
+    text-shadow: none !important;
+  }
+}

@@ -90,6 +90,15 @@ export default function App() {
           <ReportsView
             cases={cases}
             initialCaseRef={selectedCaseRef}
+            onNavigateToArchives={() => {
+              fetchCases();
+              setActiveView('archives');
+            }}
+            onReAnalyseCase={(caseRef) => {
+              setSelectedCaseRef(caseRef);
+              setActiveView('lab');
+            }}
+            onRefreshCases={fetchCases}
           />
         )}
 

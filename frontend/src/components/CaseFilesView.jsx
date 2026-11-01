@@ -36,15 +36,9 @@ export default function CaseFilesView({
   };
 
   const addFiles = (files) => {
-    const allowed = ['doc', 'docx', 'xls', 'xlsx', 'csv', 'jpg', 'jpeg', 'heic', 'png', 'pdf', 'txt', 'dat', 'log'];
     const valid = [];
 
     for (const f of files) {
-      const ext = f.name.split('.').pop().toLowerCase();
-      if (!allowed.includes(ext)) {
-        alert(`File format .${ext} is not in the allowed evidence register.`);
-        continue;
-      }
       if (!pendingFiles.some(x => x.name === f.name && x.size === f.size)) {
         valid.push(f);
       }
@@ -53,6 +47,27 @@ export default function CaseFilesView({
     if (valid.length > 0) {
       bureauAudio.cameraShutter();
       setPendingFiles(prev => [...prev, ...valid]);
+    }
+  };
+
+  const handleToggleWork = async (ref, isCurrentlyWorking) => {
+    bureauAudio.telegraphBeep();
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(ref)}/work`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isWorking: !isCurrentlyWorking })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (typeof onRefresh === 'function') onRefresh();
+        if (!isCurrentlyWorking && typeof onSelectCaseForLab === 'function') {
+          // Immediately route to Investigation Lab with this case active
+          onSelectCaseForLab(ref);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle work on case:', err);
     }
   };
 
@@ -267,7 +282,7 @@ export default function CaseFilesView({
                     Drop evidence files here or click to browse
                   </strong>
                   <span className="block font-elite text-[10px] text-[#755637] mt-1">
-                    Supports DOC, DOCX, XLS, CSV, JPG, PNG, PDF, TXT, DAT, LOG
+                    Accepts all evidence artifacts: Images (PNG/JPG/HEIC), Voice/Audio recordings (MP3/WAV/M4A), Video Wiretaps (MP4/MOV/WEBM), Documents, PDFs, CSVs, Hex Logs, Databases
                   </span>
                   <input
                     id="evidenceUploadInput"
@@ -370,51 +385,80 @@ export default function CaseFilesView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#a88258]">
-                {cases.map((c) => (
-                  <tr key={c.id || c.case_ref} className="hover:bg-[#ebdcc0] transition-colors">
-                    <td className="p-2.5 text-[#2b1b11]">
-                      <strong className="font-rye text-sm text-[#4d2f19] block">{c.case_ref}</strong>
-                      <span className="text-xs text-[#523720]">{c.title}</span>
-                    </td>
-                    <td className="p-2.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        c.priority === 'Critical' ? 'bg-red-800 text-white' :
-                        c.priority === 'High' ? 'bg-amber-800 text-amber-100' :
-                        'bg-[#68492c] text-[#f5ebd7]'
-                      }`}>
-                        {c.priority}
-                      </span>
-                    </td>
-                    <td className="p-2.5 text-[#4a321f] text-[11px]">{c.category || 'Classified'}</td>
-                    <td className="p-2.5 text-[#3a2516] font-bold">{c.evidence_count || 0} item(s)</td>
-                    <td className="p-2.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-[#3a2516] text-[#dfcdb0]">
-                        {c.status || 'Active'}
-                      </span>
-                    </td>
-                    <td className="p-2.5 text-[#634830] text-[10px]">
-                      {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Active'}
-                    </td>
-                    <td className="p-2.5 text-right space-x-2">
-                      <button
-                        onClick={() => {
-                          bureauAudio.telegraphBeep();
-                          if (typeof onSelectCaseForLab === 'function') onSelectCaseForLab(c.case_ref);
-                        }}
-                        className="western-btn px-2.5 py-1 text-[10px]"
-                      >
-                        ⚒ Open in Lab
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCase(c.case_ref)}
-                        className="p-1 text-red-800 hover:text-red-950 transition-colors"
-                        title="Delete Dossier"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {cases.map((c) => {
+                  const isWorking = Boolean(c.is_working_on);
+                  return (
+                    <tr 
+                      key={c.id || c.case_ref} 
+                      className={`transition-colors ${
+                        isWorking 
+                          ? 'bg-[#edd8af] border-l-4 border-l-[#c69a50]' 
+                          : 'hover:bg-[#ebdcc0]'
+                      }`}
+                    >
+                      <td className="p-2.5 text-[#2b1b11]">
+                        <div className="flex items-center gap-1.5">
+                          <strong className="font-rye text-sm text-[#4d2f19] block">{c.case_ref}</strong>
+                          {isWorking && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 bg-[#5d381c] text-[#ffe6b3] rounded border border-[#b88c4d] animate-pulse">
+                              ⚡ ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-[#523720]">{c.title}</span>
+                      </td>
+                      <td className="p-2.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          c.priority === 'Critical' ? 'bg-red-800 text-white' :
+                          c.priority === 'High' ? 'bg-amber-800 text-amber-100' :
+                          'bg-[#68492c] text-[#f5ebd7]'
+                        }`}>
+                          {c.priority}
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-[#4a321f] text-[11px]">{c.category || 'Classified'}</td>
+                      <td className="p-2.5 text-[#3a2516] font-bold">{c.evidence_count || 0} item(s)</td>
+                      <td className="p-2.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-[#3a2516] text-[#dfcdb0]">
+                          {c.status || 'Active'}
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-[#634830] text-[10px]">
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Active'}
+                      </td>
+                      <td className="p-2.5 text-right space-x-2">
+                        {/* Work On / Work Off button */}
+                        <button
+                          onClick={() => handleToggleWork(c.case_ref, isWorking)}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all inline-flex items-center gap-1 ${
+                            isWorking
+                              ? 'bg-[#c69a50] text-[#1f130b] border border-[#ffe09e] shadow-[0_0_8px_rgba(198,154,80,0.7)]'
+                              : 'bg-[#2e1d13] text-[#dfcdb0] border border-[#8a5d35] hover:border-[#c69a50]'
+                          }`}
+                          title={isWorking ? "Investigation active on this case. Click to stand down." : "Mobilize officers and analyze in Investigation Lab"}
+                        >
+                          {isWorking ? '⚡ Work ON' : 'Work On'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            bureauAudio.telegraphBeep();
+                            if (typeof onSelectCaseForLab === 'function') onSelectCaseForLab(c.case_ref);
+                          }}
+                          className="western-btn px-2.5 py-1 text-[10px]"
+                        >
+                          ⚒ Open in Lab
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCase(c.case_ref)}
+                          className="p-1 text-red-800 hover:text-red-950 transition-colors"
+                          title="Delete Dossier"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
 
                 {cases.length === 0 && (
                   <tr>
