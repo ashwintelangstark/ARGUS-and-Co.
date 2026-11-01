@@ -184,48 +184,59 @@ button {
 .agent-tags {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 10;
   pointer-events: none;
 }
 
 .agent-tag {
   position: absolute;
+  display: none;
   pointer-events: auto;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -100%);
   background: #1c120eea;
   border: 1px solid #b1844c;
   color: #f2dfbb;
-  padding: 7px 11px;
-  min-width: 130px;
+  padding: 6px 10px;
+  min-width: 125px;
   text-align: left;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
-  border-radius: 2px;
-  transition: all 0.15s ease-in-out;
+  border-radius: 3px;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  will-change: left, top;
+  z-index: 10;
+}
+.agent-tag::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #b1844c;
 }
 .agent-tag b {
   display: block;
   font-family: 'Rye', serif;
   font-size: 11px;
   color: #f2dfbb;
+  white-space: nowrap;
 }
 .agent-tag span {
   display: block;
   font-family: 'Special Elite', monospace;
-  font-size: 9px;
+  font-size: 8.5px;
   color: #c5a879;
-  margin-top: 3px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 .agent-tag:hover, .agent-tag.selected {
   border-color: #e9c47f;
   background: #382416;
   box-shadow: 0 0 16px rgba(211, 164, 91, 0.55);
-  transform: translate(-50%, -52%);
 }
-.agent-tag.apex { left: 31%; top: 43%; }
-.agent-tag.lutkin { left: 15%; top: 68%; }
-.agent-tag.argus { left: 50%; top: 63%; }
-.agent-tag.vanguard { left: 73%; top: 42%; }
-.agent-tag.cortex { left: 86%; top: 68%; }
 
 .vignette {
   position: absolute;

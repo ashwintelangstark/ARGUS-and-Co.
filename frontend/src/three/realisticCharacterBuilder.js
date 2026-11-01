@@ -277,29 +277,64 @@ export function createRealisticCharacter(agentId, options = {}) {
     }
   }
 
-  // 5. Gender-Tailored Arms & Hands
+  // 5. Articulated Gender-Tailored Arms & Legs for Free Walking
+  const legSpread = cfg.isFemale ? 0.16 : 0.19;
+  const legRadius = cfg.isFemale ? 0.13 : 0.16;
+  const bootW = cfg.isFemale ? 0.22 : 0.27;
+
+  // Left Leg Pivot
+  const legLeft = new THREE.Group();
+  legLeft.position.set(-legSpread, 0.74, 0);
+  body.add(legLeft);
+  const legMeshL = new THREE.Mesh(new THREE.CapsuleGeometry(legRadius, 0.62, 4, 10), darkwoodMat);
+  legMeshL.position.y = -0.31;
+  legMeshL.castShadow = true;
+  legLeft.add(legMeshL);
+  box(legLeft, bootW, 0.13, 0.44, blackMat, 0, -0.66, 0.12);
+
+  // Right Leg Pivot
+  const legRight = new THREE.Group();
+  legRight.position.set(legSpread, 0.74, 0);
+  body.add(legRight);
+  const legMeshR = new THREE.Mesh(new THREE.CapsuleGeometry(legRadius, 0.62, 4, 10), darkwoodMat);
+  legMeshR.position.y = -0.31;
+  legMeshR.castShadow = true;
+  legRight.add(legMeshR);
+  box(legRight, bootW, 0.13, 0.44, blackMat, 0, -0.66, 0.12);
+
+  // Arms
+  const armSpread = cfg.isFemale ? 0.40 : 0.48;
   const armRadius = cfg.isFemale ? 0.10 : 0.13;
+  const handRadius = cfg.isFemale ? 0.09 : 0.11;
   const armGeo = new THREE.CapsuleGeometry(armRadius, 0.54, 4, 10);
 
-  for (const s of [-1, 1]) {
-    const arm = new THREE.Mesh(armGeo, dusterMat);
-    const armSpread = cfg.isFemale ? 0.40 : 0.48;
-    arm.position.set(s * armSpread, 1.36, 0.02);
-    arm.rotation.z = s * (cfg.isFemale ? 0.18 : 0.22);
-    body.add(arm);
+  // Left Arm Pivot
+  const armLeft = new THREE.Group();
+  armLeft.position.set(-armSpread, 1.62, 0);
+  body.add(armLeft);
+  const armMeshL = new THREE.Mesh(armGeo, dusterMat);
+  armMeshL.position.set(0, -0.28, 0);
+  armMeshL.rotation.z = -0.16;
+  armMeshL.castShadow = true;
+  armLeft.add(armMeshL);
+  const handL = new THREE.Mesh(new THREE.SphereGeometry(handRadius, 12, 10), skinMat);
+  handL.position.set(-0.06, -0.60, 0.04);
+  handL.castShadow = true;
+  armLeft.add(handL);
 
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(cfg.isFemale ? 0.09 : 0.11, 12, 10), skinMat);
-    hand.position.set(s * (armSpread + 0.02), 1.02, 0.05);
-    body.add(hand);
-
-    // Duster legs & boots
-    const legRadius = cfg.isFemale ? 0.13 : 0.16;
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(legRadius, 0.62, 4, 10), darkwoodMat);
-    leg.position.set(s * (cfg.isFemale ? 0.16 : 0.19), 0.43, 0);
-    body.add(leg);
-
-    box(body, cfg.isFemale ? 0.22 : 0.27, 0.13, 0.44, blackMat, s * (cfg.isFemale ? 0.16 : 0.19), 0.08, 0.12);
-  }
+  // Right Arm Pivot
+  const armRight = new THREE.Group();
+  armRight.position.set(armSpread, 1.62, 0);
+  body.add(armRight);
+  const armMeshR = new THREE.Mesh(armGeo, dusterMat);
+  armMeshR.position.set(0, -0.28, 0);
+  armMeshR.rotation.z = 0.16;
+  armMeshR.castShadow = true;
+  armRight.add(armMeshR);
+  const handR = new THREE.Mesh(new THREE.SphereGeometry(handRadius, 12, 10), skinMat);
+  handR.position.set(0.06, -0.60, 0.04);
+  handR.castShadow = true;
+  armRight.add(handR);
 
   // 6. Chest Badge / Insignia
   const badge = box(body, 0.15, 0.15, 0.035, brassMat, 0.22, 1.56, 0.36);
@@ -329,11 +364,31 @@ export function createRealisticCharacter(agentId, options = {}) {
   group.scale.setScalar(scale);
 
   // Animation Update Loop
-  group.update = function (time, mouseTarget = { x: 0, y: 0 }, isSpeaking = false) {
-    // Breathing
-    const breath = Math.sin(time * 1.3) * 0.02;
-    body.position.y = breath;
-    headGroup.position.y = 2.18 + breath * 1.1;
+  group.update = function (time, mouseTarget = { x: 0, y: 0 }, isSpeaking = false, isWalking = false, walkCycle = 0) {
+    if (isWalking) {
+      // Natural detective stride cadence
+      const walkAngle = Math.sin(walkCycle * 7.5);
+      legLeft.rotation.x = walkAngle * 0.48;
+      legRight.rotation.x = -walkAngle * 0.48;
+      armLeft.rotation.x = -walkAngle * 0.38;
+      armRight.rotation.x = walkAngle * 0.38;
+
+      // Vertical step bob and slight roll
+      body.position.y = Math.abs(Math.sin(walkCycle * 7.5)) * 0.04;
+      body.rotation.z = Math.sin(walkCycle * 3.75) * 0.02;
+      headGroup.position.y = 2.18 + body.position.y * 1.1;
+    } else {
+      // Breathing at rest
+      const breath = Math.sin(time * 1.3) * 0.02;
+      body.position.y = breath;
+      body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, 0, 0.1);
+      headGroup.position.y = 2.18 + breath * 1.1;
+
+      legLeft.rotation.x = THREE.MathUtils.lerp(legLeft.rotation.x, 0, 0.15);
+      legRight.rotation.x = THREE.MathUtils.lerp(legRight.rotation.x, 0, 0.15);
+      armLeft.rotation.x = THREE.MathUtils.lerp(armLeft.rotation.x, 0, 0.15);
+      armRight.rotation.x = THREE.MathUtils.lerp(armRight.rotation.x, 0, 0.15);
+    }
 
     // Head-tracking mouse cursor
     const targetRotY = THREE.MathUtils.clamp(mouseTarget.x * 0.38, -0.42, 0.42);

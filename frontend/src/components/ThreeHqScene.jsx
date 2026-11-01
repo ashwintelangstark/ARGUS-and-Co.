@@ -2,14 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { buildRealisticHqScene } from '../three/realisticHqBuilder.js';
 import { bureauAudio } from '../utils/audio.js';
 import { 
-  Eye, 
   Volume2, 
   VolumeX, 
-  Sun, 
-  Moon, 
-  Sunset, 
-  Sunrise, 
-  Clock, 
   FileText, 
   Hash, 
   Calendar, 
@@ -17,6 +11,14 @@ import {
   X,
   ShieldAlert
 } from 'lucide-react';
+
+const AGENTS = [
+  { id: 'LUTKIN', title: 'OFFICER LUTKIN', role: 'Forensic Intelligence Officer' },
+  { id: 'APEX', title: 'DETECTIVE APEX', role: 'Deputy Investigation Officer' },
+  { id: 'ARGUS', title: 'DETECTIVE ARGUS', role: 'Chief Investigation Officer' },
+  { id: 'VANGUARD', title: 'OFFICER VANGUARD', role: 'Intelligence Operations Officer' },
+  { id: 'CORTEX', title: 'OFFICER CORTEX', role: 'Analytical Intelligence Officer' }
+];
 
 export default function ThreeHqScene({ 
   cases = [], 
@@ -26,11 +28,10 @@ export default function ThreeHqScene({
   const canvasRef = useRef(null);
   const hqInstanceRef = useRef(null);
 
-  const [isPaused, setIsPaused] = useState(false);
+  const [isFreeRoam, setIsFreeRoam] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState('ARGUS');
-  const [lightingMode, setLightingMode] = useState('auto');
-  const [activityText, setActivityText] = useState('The office is quiet. Open Case Files to register evidence or review a case.');
+  const [activityText, setActivityText] = useState('Officers are moving freely through the bureau, inspecting case evidence.');
   
   // Selected evidence / card inspected on 3D board
   const [inspectedCard, setInspectedCard] = useState(null);
@@ -118,12 +119,17 @@ export default function ThreeHqScene({
     }
   };
 
-  const togglePause = () => {
-    const next = !isPaused;
-    setIsPaused(next);
+  const toggleFreeRoam = () => {
+    const next = !isFreeRoam;
+    setIsFreeRoam(next);
     if (hqInstanceRef.current) {
-      hqInstanceRef.current.setPause(next);
+      hqInstanceRef.current.setFreeRoam(next);
     }
+    setActivityText(next 
+      ? 'Officers freed to roam, patrol, and inspect evidence across the bureau.' 
+      : 'All officers ordered to station at their assigned desks.'
+    );
+    bureauAudio.typewriterClick();
   };
 
   const resetView = () => {
@@ -147,88 +153,21 @@ export default function ThreeHqScene({
     setIsMuted(muted);
   };
 
-  const changeLightingMode = (mode) => {
-    bureauAudio.typewriterClick();
-    setLightingMode(mode);
-    if (hqInstanceRef.current) {
-      hqInstanceRef.current.setLightingMode(mode);
-    }
-  };
-
-  // Helper to get time icon
-  const getLightingIcon = (mode) => {
-    switch (mode) {
-      case 'day': return <Sun size={12} className="text-amber-400" />;
-      case 'sunset': return <Sunset size={12} className="text-orange-400" />;
-      case 'night': return <Moon size={12} className="text-blue-300" />;
-      case 'dawn': return <Sunrise size={12} className="text-rose-300" />;
-      default: return <Clock size={12} className="text-emerald-400" />;
-    }
-  };
-
   return (
     <section className="view active" id="headquarters">
       {/* 3D Western Bureau Scene */}
       <canvas id="scene" ref={canvasRef} aria-label="Three dimensional western detective office" />
       <div className="vignette" />
 
-      {/* HQ Top Heading */}
-      <div className="hq-heading">
-        <div className="eyebrow">THE FRONTIER DISTRICT · EST. 1891</div>
-        <h1>ARGUS DETECTIVE AGENCY</h1>
-        <p>Five specialists. One bureau. Every clue accounted for.</p>
-      </div>
-
       {/* HQ Tools */}
       <div className="hq-tools">
-        {/* Dynamic Timing / Lighting Mode Switcher */}
-        <div className="flex items-center bg-[#21170fdd] border border-[#9c7545] rounded p-0.5 shadow-md">
-          <button
-            onClick={() => changeLightingMode('auto')}
-            className={`px-2 py-1 text-[10px] font-elite flex items-center gap-1 rounded transition-all ${
-              lightingMode === 'auto' ? 'bg-[#5a361f] text-[#ffe7b8] border border-[#b88c4d]' : 'text-[#c2ad88] hover:text-[#fff]'
-            }`}
-            title="Auto Lighting: Synced to current wall clock time"
-          >
-            <Clock size={11} /> Auto
-          </button>
-          <button
-            onClick={() => changeLightingMode('day')}
-            className={`px-1.5 py-1 text-[10px] font-elite flex items-center rounded transition-all ${
-              lightingMode === 'day' ? 'bg-[#5a361f] text-[#ffe7b8] border border-[#b88c4d]' : 'text-[#c2ad88] hover:text-[#fff]'
-            }`}
-            title="Day: High noon frontier sunlight"
-          >
-            <Sun size={11} />
-          </button>
-          <button
-            onClick={() => changeLightingMode('sunset')}
-            className={`px-1.5 py-1 text-[10px] font-elite flex items-center rounded transition-all ${
-              lightingMode === 'sunset' ? 'bg-[#5a361f] text-[#ffe7b8] border border-[#b88c4d]' : 'text-[#c2ad88] hover:text-[#fff]'
-            }`}
-            title="Sunset: Fiery copper golden hour"
-          >
-            <Sunset size={11} />
-          </button>
-          <button
-            onClick={() => changeLightingMode('night')}
-            className={`px-1.5 py-1 text-[10px] font-elite flex items-center rounded transition-all ${
-              lightingMode === 'night' ? 'bg-[#5a361f] text-[#ffe7b8] border border-[#b88c4d]' : 'text-[#c2ad88] hover:text-[#fff]'
-            }`}
-            title="Night: Film noir lantern and candle glow"
-          >
-            <Moon size={11} />
-          </button>
-          <button
-            onClick={() => changeLightingMode('dawn')}
-            className={`px-1.5 py-1 text-[10px] font-elite flex items-center rounded transition-all ${
-              lightingMode === 'dawn' ? 'bg-[#5a361f] text-[#ffe7b8] border border-[#b88c4d]' : 'text-[#c2ad88] hover:text-[#fff]'
-            }`}
-            title="Dawn: Early morning pale mist"
-          >
-            <Sunrise size={11} />
-          </button>
-        </div>
+        <button
+          onClick={toggleFreeRoam}
+          className={`western-btn ${isFreeRoam ? 'western-btn-gold' : ''}`}
+          title={isFreeRoam ? "Station all agents at their desks" : "Free agents to roam and inspect evidence"}
+        >
+          <span>{isFreeRoam ? '🪑 Station at Desks' : '🚶 Free Agents'}</span>
+        </button>
 
         <button
           onClick={focusBoard}
@@ -239,15 +178,6 @@ export default function ThreeHqScene({
         </button>
 
         <button
-          onClick={() => onSelectAgent && onSelectAgent(selectedAgent)}
-          className="western-btn western-btn-gold"
-          title="Open Officer Interrogation & 3D Studio"
-        >
-          <Eye size={13} style={{ display: 'inline', marginRight: '5px' }} />
-          <span>Interrogate ({selectedAgent})</span>
-        </button>
-
-        <button
           onClick={toggleAudio}
           className="western-btn"
           title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
@@ -255,61 +185,25 @@ export default function ThreeHqScene({
           {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
         </button>
 
-        <button onClick={togglePause} className="western-btn" id="pauseScene">
-          {isPaused ? '▶ Resume scene' : 'Ⅱ Pause scene'}
-        </button>
-
         <button onClick={resetView} className="western-btn" id="resetScene">
           ↺ Reset view
         </button>
       </div>
 
-      {/* Agent Tags positioned directly over the 3D Detectives */}
+      {/* Dynamic Floating Agent Badges - Track 3D position in real time */}
       <div className="agent-tags">
-        <button 
-          className={`agent-tag lutkin ${selectedAgent === 'LUTKIN' ? 'selected' : ''}`}
-          data-agent="LUTKIN"
-          onClick={() => handleSelectAgent('LUTKIN')}
-        >
-          <b>OFFICER LUTKIN</b>
-          <span>Forensic Intelligence Officer</span>
-        </button>
-
-        <button 
-          className={`agent-tag apex ${selectedAgent === 'APEX' ? 'selected' : ''}`}
-          data-agent="APEX"
-          onClick={() => handleSelectAgent('APEX')}
-        >
-          <b>DETECTIVE APEX</b>
-          <span>Deputy Investigation Officer</span>
-        </button>
-
-        <button 
-          className={`agent-tag argus ${selectedAgent === 'ARGUS' ? 'selected' : ''}`}
-          data-agent="ARGUS"
-          onClick={() => handleSelectAgent('ARGUS')}
-        >
-          <b>DETECTIVE ARGUS</b>
-          <span>Chief Investigation Officer</span>
-        </button>
-
-        <button 
-          className={`agent-tag vanguard ${selectedAgent === 'VANGUARD' ? 'selected' : ''}`}
-          data-agent="VANGUARD"
-          onClick={() => handleSelectAgent('VANGUARD')}
-        >
-          <b>OFFICER VANGUARD</b>
-          <span>Intelligence Operations Officer</span>
-        </button>
-
-        <button 
-          className={`agent-tag cortex ${selectedAgent === 'CORTEX' ? 'selected' : ''}`}
-          data-agent="CORTEX"
-          onClick={() => handleSelectAgent('CORTEX')}
-        >
-          <b>OFFICER CORTEX</b>
-          <span>Analytical Intelligence Officer</span>
-        </button>
+        {AGENTS.map((a) => (
+          <button 
+            key={a.id}
+            id={`agent-tag-${a.id}`}
+            className={`agent-tag ${selectedAgent === a.id ? 'selected' : ''}`}
+            data-agent={a.id}
+            onClick={() => handleSelectAgent(a.id)}
+          >
+            <b>{a.title}</b>
+            <span>{a.role}</span>
+          </button>
+        ))}
       </div>
 
       {/* Evidence Inspector Card Modal when clicking on 3D board items */}

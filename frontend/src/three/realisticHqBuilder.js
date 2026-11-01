@@ -401,24 +401,56 @@ export function buildRealisticHqScene(canvas, options = {}) {
   // THE 5 GENDER-TAILORED DETECTIVES
   // ==========================================
   const agents = [
-    { name: 'ARGUS', x: 0, z: 3.6, scale: 1.08, gender: 'Male', role: 'Chief Investigation Officer' },
-    { name: 'APEX', x: -4.5, z: -0.4, scale: 1.0, gender: 'Female', role: 'Deputy Investigation Officer' },
-    { name: 'LUTKIN', x: -8.2, z: 2.5, scale: 0.94, gender: 'Female', role: 'Forensic Intelligence Officer' },
-    { name: 'VANGUARD', x: 4.5, z: -0.4, scale: 1.04, gender: 'Male', role: 'Intelligence Operations Officer' },
-    { name: 'CORTEX', x: 8.2, z: 2.5, scale: 0.95, gender: 'Male', role: 'Analytical Intelligence Officer' }
+    { name: 'ARGUS', x: 0, z: 3.6, rotY: 0, scale: 1.08, gender: 'Male', role: 'Chief Investigation Officer' },
+    { name: 'APEX', x: -4.5, z: -0.4, rotY: Math.PI / 4, scale: 1.0, gender: 'Female', role: 'Deputy Investigation Officer' },
+    { name: 'LUTKIN', x: -8.2, z: 2.5, rotY: 0, scale: 0.94, gender: 'Female', role: 'Forensic Intelligence Officer' },
+    { name: 'VANGUARD', x: 4.5, z: -0.4, rotY: -Math.PI / 4, scale: 1.04, gender: 'Male', role: 'Intelligence Operations Officer' },
+    { name: 'CORTEX', x: 8.2, z: 2.5, rotY: 0, scale: 0.95, gender: 'Male', role: 'Analytical Intelligence Officer' }
   ];
 
+  // Points of Interest (POIs) across the Western Bureau Office for Free Roaming
+  const officeWaypoints = [
+    // Case Board Inspection
+    { x: -2.8, z: -5.8, rotY: Math.PI },
+    { x: 0.0, z: -6.0, rotY: Math.PI },
+    { x: 2.8, z: -5.8, rotY: Math.PI },
+    // Briefing Table Discussions
+    { x: -3.2, z: 1.8, rotY: Math.PI / 2 },
+    { x: 3.2, z: 2.0, rotY: -Math.PI / 2 },
+    { x: 0.0, z: 0.5, rotY: 0 },
+    // Aisle & Floor Pacing
+    { x: -2.0, z: -2.5, rotY: Math.PI * 0.7 },
+    { x: 2.0, z: -2.5, rotY: Math.PI * 1.3 },
+    { x: -1.5, z: 5.5, rotY: 0 },
+    { x: 1.5, z: 5.5, rotY: 0 },
+    // Clerestory Window & Archives
+    { x: -9.5, z: -3.8, rotY: Math.PI / 4 },
+    { x: 9.5, z: -3.8, rotY: -Math.PI / 4 }
+  ];
+
+  let isFreeMode = true; // Agents move freely by default until assigned work
   const figures = [];
 
-  agents.forEach(a => {
+  agents.forEach((a, idx) => {
     const char = createRealisticCharacter(a.name, { scale: a.scale });
     char.position.set(a.x, 0, a.z);
+    char.rotation.y = a.rotY || 0;
     scene.add(char);
 
     figures.push({
       name: a.name,
       group: char,
       agentData: a,
+      homePos: new THREE.Vector3(a.x, 0, a.z),
+      homeRotY: a.rotY || 0,
+      currentPos: new THREE.Vector3(a.x, 0, a.z),
+      targetPos: new THREE.Vector3(a.x, 0, a.z),
+      targetRotY: a.rotY || 0,
+      state: 'idle', // 'idle' | 'walking'
+      idleTimer: 1.5 + idx * 1.8, // staggered initial movement
+      walkCycle: Math.random() * 10,
+      speed: 1.25 + (idx % 3) * 0.15,
+      isAssignedWork: false,
       phase: Math.random() * 6
     });
   });
@@ -497,13 +529,129 @@ export function buildRealisticHqScene(canvas, options = {}) {
     if (!isRunning) return;
     requestAnimationFrame(animate);
 
+    const dt = Math.min(clock.getDelta(), 0.1);
     const t = clock.getElapsedTime();
 
-    // Subtle breathing, head-tracking, and speaking animation for all detectives
+    // 1. Autonomous Detective Movement & Animation
     figures.forEach(f => {
       const isSpeaking = (f.name === activeSpeakerName);
-      if (f.group && typeof f.group.update === 'function') {
-        f.group.update(t, mouse, isSpeaking);
+
+      if (isFreeMode && !f.isAssignedWork) {
+        // Free Roaming Mode: stroll around bureau, inspect board, pace floor
+        if (f.state === 'walking') {
+          const dx = f.targetPos.x - f.currentPos.x;
+          const dz = f.targetPos.z - f.currentPos.z;
+          const dist = Math.hypot(dx, dz);
+
+          if (dist > 0.15) {
+            // Smoothly face walking direction
+            const moveAngle = Math.atan2(dx, dz);
+            let diffAngle = moveAngle - f.group.rotation.y;
+            while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
+            while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+            f.group.rotation.y += diffAngle * 0.08;
+
+            // Advance position
+            const step = Math.min(f.speed * dt, dist);
+            f.currentPos.x += (dx / dist) * step;
+            f.currentPos.z += (dz / dist) * step;
+            f.group.position.x = f.currentPos.x;
+            f.group.position.z = f.currentPos.z;
+
+            f.walkCycle += dt;
+            if (f.group.update) {
+              f.group.update(t, mouse, isSpeaking, true, f.walkCycle);
+            }
+          } else {
+            // Arrived at destination point
+            f.state = 'idle';
+            f.idleTimer = 4.5 + Math.random() * 6.0; // inspect for 4.5 - 10.5 seconds
+            if (f.group.update) {
+              f.group.update(t, mouse, isSpeaking, false, 0);
+            }
+          }
+        } else {
+          // Idle / inspecting
+          f.group.rotation.y = THREE.MathUtils.lerp(f.group.rotation.y, f.targetRotY, 0.05);
+          if (f.group.update) {
+            f.group.update(t, mouse, isSpeaking, false, 0);
+          }
+
+          f.idleTimer -= dt;
+          if (f.idleTimer <= 0) {
+            // Pick next destination distinct from current location
+            const candidateWaypoints = officeWaypoints.filter(wp =>
+              Math.hypot(wp.x - f.currentPos.x, wp.z - f.currentPos.z) > 2.5
+            );
+            // 20% chance to also walk back to their desk for a quick check
+            let nextWp;
+            if (Math.random() < 0.22) {
+              nextWp = { x: f.homePos.x, z: f.homePos.z, rotY: f.homeRotY };
+            } else {
+              nextWp = candidateWaypoints[Math.floor(Math.random() * candidateWaypoints.length)] || officeWaypoints[0];
+            }
+
+            f.targetPos.set(nextWp.x, 0, nextWp.z);
+            f.targetRotY = nextWp.rotY;
+            f.state = 'walking';
+          }
+        }
+      } else {
+        // Stationed at Assigned Work Desk
+        const dx = f.homePos.x - f.currentPos.x;
+        const dz = f.homePos.z - f.currentPos.z;
+        const dist = Math.hypot(dx, dz);
+
+        if (dist > 0.15) {
+          // Walk back to desk
+          const moveAngle = Math.atan2(dx, dz);
+          let diffAngle = moveAngle - f.group.rotation.y;
+          while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
+          while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+          f.group.rotation.y += diffAngle * 0.08;
+
+          const step = Math.min(f.speed * dt, dist);
+          f.currentPos.x += (dx / dist) * step;
+          f.currentPos.z += (dz / dist) * step;
+          f.group.position.x = f.currentPos.x;
+          f.group.position.z = f.currentPos.z;
+
+          f.walkCycle += dt;
+          if (f.group.update) {
+            f.group.update(t, mouse, isSpeaking, true, f.walkCycle);
+          }
+        } else {
+          // Stationed at desk facing station angle
+          f.group.rotation.y = THREE.MathUtils.lerp(f.group.rotation.y, f.homeRotY, 0.08);
+          if (f.group.update) {
+            f.group.update(t, mouse, isSpeaking, false, 0);
+          }
+        }
+      }
+    });
+
+    // 2. Project Agent Name & Designation Badges from 3D World to Screen Coordinates
+    const canvasRect = canvas.getBoundingClientRect();
+    const cw = canvasRect.width;
+    const ch = canvasRect.height;
+
+    figures.forEach(f => {
+      const tagEl = document.getElementById(`agent-tag-${f.name}`);
+      if (tagEl) {
+        const tagWorld = new THREE.Vector3();
+        f.group.getWorldPosition(tagWorld);
+        tagWorld.y += 2.45; // Directly above head and Stetson
+        tagWorld.project(camera);
+
+        if (tagWorld.z < 1.0 && tagWorld.z > -1.0) {
+          const screenX = (tagWorld.x * 0.5 + 0.5) * cw;
+          const screenY = (-(tagWorld.y * 0.5) + 0.5) * ch;
+          tagEl.style.display = 'block';
+          tagEl.style.left = `${screenX.toFixed(1)}px`;
+          tagEl.style.top = `${screenY.toFixed(1)}px`;
+        } else {
+          tagEl.style.display = 'none';
+        }
       }
     });
 
@@ -536,9 +684,8 @@ export function buildRealisticHqScene(canvas, options = {}) {
     focusAgent: (agentName) => {
       const match = figures.find(x => x.name === agentName);
       if (match) {
-        const a = match.agentData;
-        targetCamPos.set(a.x * 0.25, 7, a.z + 5.5);
-        targetLookAt.set(a.x, 1.8, a.z);
+        targetCamPos.set(match.currentPos.x * 0.35, 6.5, match.currentPos.z + 5.0);
+        targetLookAt.set(match.currentPos.x, 1.8, match.currentPos.z);
         isTransitioning = true;
       }
     },
@@ -554,6 +701,28 @@ export function buildRealisticHqScene(canvas, options = {}) {
     },
     setActiveSpeaker: (agentName) => {
       activeSpeakerName = agentName;
+    },
+    setFreeRoam: (free) => {
+      isFreeMode = free;
+      if (!free) {
+        figures.forEach(f => {
+          f.state = 'walking';
+          f.targetPos.copy(f.homePos);
+          f.targetRotY = f.homeRotY;
+        });
+      }
+    },
+    isFreeRoam: () => isFreeMode,
+    assignWork: (agentName, isAssigned) => {
+      const f = figures.find(x => x.name === agentName);
+      if (f) {
+        f.isAssignedWork = isAssigned;
+        if (isAssigned) {
+          f.state = 'walking';
+          f.targetPos.copy(f.homePos);
+          f.targetRotY = f.homeRotY;
+        }
+      }
     },
     setLightingMode: (mode) => {
       activeTimeMode = mode;
