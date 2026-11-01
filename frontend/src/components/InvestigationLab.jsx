@@ -130,55 +130,60 @@ export default function InvestigationLab({
       id: 'ARGUS',
       name: 'Detective Argus',
       role: 'Chief Investigation Officer',
+      avatar: '/avatars/argus.png',
+      face: '/avatars/argus.png',
       model: 'openrouter/free (Gemma-4-31B)',
       accent: '#f59e0b',
       borderClass: 'border-amber-500',
       badge: 'CHIEF',
-      icon: '👑',
       desc: 'Orchestrates case strategy, interrogates suspect motives, and issues final directives.'
     },
     {
       id: 'APEX',
       name: 'Detective Apex',
       role: 'Deputy Investigation Officer',
+      avatar: '/avatars/apex.png',
+      face: '/avatars/apex.png',
       model: 'openrouter/free (Nemotron-3.5)',
       accent: '#a855f7',
       borderClass: 'border-purple-500',
       badge: 'DEPUTY',
-      icon: '★',
       desc: 'Challenges working assumptions, attacks confirmation bias, and protects against flawed conclusions.'
     },
     {
       id: 'LUTKIN',
       name: 'Officer Lutkin',
       role: 'Forensic Intelligence Officer',
+      avatar: '/avatars/lutkin.png',
+      face: '/avatars/lutkin.png',
       model: 'openrouter/free (LFM-2.5)',
       accent: '#00d2ff',
       borderClass: 'border-cyan-400',
       badge: 'FORENSICS',
-      icon: '🔬',
       desc: 'Performs cryptographic hash inspection, digital log validation, and forgery analysis.'
     },
     {
       id: 'VANGUARD',
       name: 'Officer Vanguard',
       role: 'Intelligence Operations Officer',
+      avatar: '/avatars/vanguard.png',
+      face: '/avatars/vanguard.png',
       model: 'openrouter/free (Nemotron-Omni)',
       accent: '#f97316',
       borderClass: 'border-orange-500',
       badge: 'INTEL & OSINT',
-      icon: '🌐',
       desc: 'Monitors public manifests, wire intercepts, transit coordinates, and syndicate entities.'
     },
     {
       id: 'CORTEX',
       name: 'Officer Cortex',
       role: 'Analytical Intelligence Officer',
+      avatar: '/avatars/cortex.png',
+      face: '/avatars/cortex.png',
       model: 'openrouter/free (Gemma-4-26B)',
       accent: '#10b981',
       borderClass: 'border-emerald-400',
       badge: 'ANALYTICS',
-      icon: '📊',
       desc: 'Calculates probability matrices, identifies signal anomalies, and graphs relational link charts.'
     }
   ];
@@ -348,18 +353,18 @@ export default function InvestigationLab({
                       </span>
                     )}
 
-                    <div className="flex items-center gap-2 mb-2">
-                      <div 
-                        className="w-10 h-10 rounded border border-[#4d2f19] shadow flex items-center justify-center text-lg bg-[#24170f]" 
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <img 
+                        src={officer.avatar} 
+                        alt={officer.name} 
+                        className="w-12 h-14 rounded object-cover border-2 shadow flex-shrink-0 bg-[#24170f]" 
                         style={{ borderColor: officer.accent }}
-                      >
-                        <span>{officer.icon}</span>
-                      </div>
-                      <div>
-                        <span className="text-[9px] font-elite px-1 rounded text-white font-bold" style={{ backgroundColor: officer.accent }}>
+                      />
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-elite px-1.5 py-0.5 rounded text-white font-bold inline-block" style={{ backgroundColor: officer.accent }}>
                           {officer.badge}
                         </span>
-                        <h4 className="font-rye text-xs text-[#3b2413] mt-0.5 leading-none">{officer.name}</h4>
+                        <h4 className="font-rye text-xs text-[#3b2413] mt-1 leading-none truncate">{officer.name}</h4>
                       </div>
                     </div>
 
@@ -395,35 +400,54 @@ export default function InvestigationLab({
             className="h-[380px] overflow-y-auto space-y-3.5 pr-2 font-elite text-xs"
           >
             {deliberations.map((turn, i) => {
-              const matchedOfficer = officers.find(o => o.id === turn.officer || o.name === turn.officer_name) || officers[0];
+              const matchedOfficer = officers.find(o => 
+                (o.id && turn.officer && o.id.toUpperCase() === turn.officer.toUpperCase()) || 
+                (turn.officer_name && o.name.toLowerCase().includes(turn.officer_name.toLowerCase()))
+              ) || officers[0];
 
               return (
                 <div 
                   key={turn.id || i}
-                  className="p-3.5 rounded bg-[#f5ece0] border-l-4 shadow-sm"
+                  className="p-4 rounded bg-[#f7efe4] border-l-4 shadow-sm border border-[#ceb18d] transition-all"
                   style={{ borderLeftColor: matchedOfficer.accent }}
                 >
-                  <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#debda0]">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b border-[#ddc2a4]">
+                    <div className="flex items-center gap-2.5">
                       <img 
-                        src={matchedOfficer.face} 
+                        src={matchedOfficer.avatar || matchedOfficer.face} 
                         alt={matchedOfficer.name} 
-                        className="w-6 h-6 rounded-full object-cover border border-[#4d2f19]" 
+                        className="w-10 h-12 rounded object-cover border-2 shadow-sm bg-[#1e140d]"
+                        style={{ borderColor: matchedOfficer.accent }}
                       />
-                      <strong className="font-rye text-xs text-[#3d2412]">
-                        {turn.officer_name || matchedOfficer.name}
-                      </strong>
-                      <span className="text-[10px] text-[#78593a]">
-                        — {turn.role || matchedOfficer.role}
-                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <strong className="font-rye text-sm text-[#3a2211]">
+                            {turn.officer_name || matchedOfficer.name}
+                          </strong>
+                          <span 
+                            className="text-[9px] font-elite px-1.5 py-0.2 text-white font-bold rounded"
+                            style={{ backgroundColor: matchedOfficer.accent }}
+                          >
+                            {matchedOfficer.badge}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#715234] font-elite mt-0.5">
+                          {turn.role || matchedOfficer.role}
+                        </p>
+                      </div>
                     </div>
 
-                    <span className="text-[9px] font-mono-code text-[#8f6e4d]">
-                      {turn.model_used ? turn.model_used.split('/')[1] || turn.model_used : 'bureau-conclave'}
-                    </span>
+                    <div className="flex items-center gap-2 text-[10px] font-mono-code text-[#795938]">
+                      <span className="px-2 py-0.5 rounded bg-[#ebdcc0] border border-[#a88258]">
+                        {turn.model_used ? turn.model_used.split('/')[1] || turn.model_used : 'bureau-conclave'}
+                      </span>
+                      <span className="text-[9px] text-[#937554]">
+                        STEP #{i + 1}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="text-xs leading-relaxed text-[#3b2413] whitespace-pre-wrap">
+                  <div className="text-xs sm:text-[13px] leading-relaxed text-[#2d1b0f] font-elite whitespace-pre-wrap pl-1">
                     {turn.message}
                   </div>
                 </div>

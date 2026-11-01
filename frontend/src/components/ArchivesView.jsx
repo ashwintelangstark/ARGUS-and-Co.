@@ -1,20 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { bureauAudio } from '../utils/audio.js';
-import { Archive, Search, Shield, Clock, FileCheck, ArrowUpRight } from 'lucide-react';
+import { Archive, Search, Shield, Clock, FileCheck, ArrowUpRight, RotateCcw } from 'lucide-react';
 
-export default function ArchivesView({ cases = [], onSelectCase }) {
+export default function ArchivesView({ cases = [], onSelectCase, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [auditLogs, setAuditLogs] = useState([]);
+  const [reopeningRef, setReopeningRef] = useState(null);
 
-  useEffect(() => {
+  const fetchAudit = () => {
     fetch('/api/audit')
       .then(res => res.json())
       .then(data => {
         if (data.success) setAuditLogs(data.logs || []);
       })
       .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchAudit();
   }, []);
+
+  const handleReopenCase = async (caseRef) => {
+    bureauAudio.conclaveChime();
+    setReopeningRef(caseRef);
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(caseRef)}/reopen`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (typeof onRefresh === 'function') await onRefresh();
+        fetchAudit();
+        if (typeof onSelectCase === 'function') onSelectCase(caseRef);
+      } else {
+        alert(data.error || 'Failed to re-open case');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error connecting to bureau server');
+    } finally {
+      setReopeningRef(null);
+    }
+  };
 
   const filteredCases = cases.filter(c => {
     const matchesSearch = c.case_ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -105,14 +133,13 @@ export default function ArchivesView({ cases = [], onSelectCase }) {
                   {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Historical'}
                 </span>
                 <button
-                  onClick={() => {
-                    bureauAudio.telegraphBeep();
-                    if (typeof onSelectCase === 'function') onSelectCase(c.case_ref);
-                  }}
-                  className="western-btn text-[10px] py-1 px-2.5 flex items-center gap-1"
+                  onClick={() => handleReopenCase(c.case_ref)}
+                  disabled={reopeningRef === c.case_ref}
+                  className="western-btn-gold text-[10px] py-1 px-3 flex items-center gap-1 font-bold shadow"
+                  title="Unseal archived case and restore to Active Bureau Dossier Ledger"
                 >
-                  <span>Re-open Dossier</span>
-                  <ArrowUpRight size={11} />
+                  <RotateCcw size={11} className={reopeningRef === c.case_ref ? 'animate-spin' : ''} />
+                  <span>{reopeningRef === c.case_ref ? 'Unsealing...' : '↺ Re-open Case'}</span>
                 </button>
               </div>
             </div>

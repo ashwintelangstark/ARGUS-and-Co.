@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { bureauAudio } from '../utils/audio.js';
+import CasePresentationModal from './CasePresentationModal.jsx';
 import { 
   Pin, RefreshCw, X, ShieldCheck, Link2, 
-  MapPin, User, FileText, Lightbulb, Award
+  MapPin, User, FileText, Lightbulb, Award, PlayCircle
 } from 'lucide-react';
 
 export default function EvidenceBoard({ caseRef }) {
@@ -10,14 +11,33 @@ export default function EvidenceBoard({ caseRef }) {
   const [loading, setLoading] = useState(true);
   const [selectedClue, setSelectedClue] = useState(null);
   const [cardPositions, setCardPositions] = useState({});
+  const [isPresenting, setIsPresenting] = useState(false);
+  const [caseData, setCaseData] = useState(null);
+  const [deliberations, setDeliberations] = useState([]);
 
   const boardRef = useRef(null);
   const cardRefs = useRef({});
+
+  // Fetch case data and deliberations
+  const fetchCaseDetail = async () => {
+    if (!caseRef) return;
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(caseRef)}`);
+      const data = await res.json();
+      if (data.success) {
+        setCaseData(data.case);
+        setDeliberations(data.deliberations || []);
+      }
+    } catch (e) {
+      console.warn('Failed to load case detail for presentation:', e);
+    }
+  };
 
   // Fetch clues curated by agents
   const fetchClues = async () => {
     try {
       setLoading(true);
+      fetchCaseDetail();
       const res = await fetch(`/api/cases/${encodeURIComponent(caseRef)}/clues`);
       const data = await res.json();
       if (data.success && data.clues) {
@@ -100,9 +120,22 @@ export default function EvidenceBoard({ caseRef }) {
           </div>
         </div>
 
-        {/* Authorship Badge & Refresh */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-[#1f130b] border border-[#855e37] text-[#c9a770] rounded text-[10px] font-elite">
+        {/* Authorship Badge & Actions */}
+        <div className="flex items-center gap-2.5">
+          {/* Present the Case Button */}
+          <button
+            onClick={() => {
+              bureauAudio.conclaveChime();
+              setIsPresenting(true);
+            }}
+            className="western-btn-gold text-[11px] py-1 px-3.5 font-bold flex items-center gap-1.5 shadow"
+            title="Begin autonomous comic-book style cinematic case presentation"
+          >
+            <PlayCircle size={14} className="text-[#3b2413]" />
+            <span>Present the Case</span>
+          </button>
+
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-[#1f130b] border border-[#855e37] text-[#c9a770] rounded text-[10px] font-elite">
             <ShieldCheck size={13} className="text-[#c69a50]" />
             <span>AUTHORSHIP: EXCLUSIVELY CURATED BY BUREAU DETECTIVES</span>
           </div>
@@ -322,6 +355,17 @@ export default function EvidenceBoard({ caseRef }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Comic Book Style Cinematic Case Presentation */}
+      {isPresenting && (
+        <CasePresentationModal
+          caseRef={caseRef}
+          caseData={caseData}
+          clues={clues}
+          deliberations={deliberations}
+          onClose={() => setIsPresenting(false)}
+        />
       )}
 
     </div>

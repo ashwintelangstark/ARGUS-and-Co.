@@ -234,6 +234,31 @@ app.post('/api/cases/:caseRef/archive', (req, res) => {
   }
 });
 
+// Re-open Archived Case Dossier
+app.post('/api/cases/:caseRef/reopen', (req, res) => {
+  try {
+    const { caseRef } = req.params;
+    const caseData = db.prepare('SELECT id, title FROM cases WHERE case_ref = ?').get(caseRef);
+    if (!caseData) return res.status(404).json({ success: false, error: 'Case not found' });
+
+    db.prepare(`
+      UPDATE cases 
+      SET status = 'Active', is_working_on = 1, updated_at = CURRENT_TIMESTAMP 
+      WHERE case_ref = ?
+    `).run(caseRef);
+
+    db.prepare(`
+      INSERT INTO audit_trail (case_ref, officer, action, details)
+      VALUES (?, ?, ?, ?)
+    `).run(caseRef, 'ARGUS', 'CASE_REOPENED', `Archived case dossier "${caseData.title}" unsealed and returned to active investigation.`);
+
+    res.json({ success: true, message: `Case ${caseRef} re-opened and returned to Active Dossier Ledger.` });
+  } catch (err) {
+    console.error('Error re-opening case:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ==========================================
 // ROUTES: EVIDENCE
 // ==========================================

@@ -286,12 +286,19 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
         {/* Top Header Bar for Modal */}
         <div className="absolute top-0 left-0 right-0 h-14 bg-gradient-to-r from-[#21140c] via-[#160e09] to-[#21140c] border-b border-[#734e2c] px-4 flex items-center justify-between z-20">
           <div className="flex items-center gap-3">
-            <img src="/favicon.png" alt="ARGUS & Co." className="w-8 h-8 rounded-full border border-[#c69a50] object-contain bg-[#120a06] shadow-sm" />
-            <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: currentAgent.accent }} />
+            <img 
+              src={`/avatars/${(agentId || 'argus').toLowerCase()}.png`} 
+              alt={currentAgent.name} 
+              className="w-9 h-10 rounded object-cover border-2 bg-[#120a06] shadow-md flex-shrink-0" 
+              style={{ borderColor: currentAgent.accent }}
+            />
             <div>
-              <h2 className="font-rye text-base md:text-lg tracking-wide text-[#f2e0be]">
-                {currentAgent.name}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-rye text-base md:text-lg tracking-wide text-[#f2e0be]">
+                  {currentAgent.name}
+                </h2>
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: currentAgent.accent }} />
+              </div>
               <p className="text-[10px] font-elite text-[#bd9f6f]">
                 {currentAgent.title} · {currentAgent.badge}
               </p>
@@ -407,7 +414,16 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
                 }`}
               >
                 <div className="flex items-center justify-between text-[9px] text-[#9a7e58] mb-1">
-                  <span>{msg.role === 'user' ? 'YOU (LEAD INVESTIGATOR)' : currentAgent.name}</span>
+                  <div className="flex items-center gap-1.5">
+                    {msg.role === 'assistant' && (
+                      <img 
+                        src={`/avatars/${(agentId || 'argus').toLowerCase()}.png`} 
+                        alt="" 
+                        className="w-4 h-4 rounded-full object-cover border border-[#9b7545]"
+                      />
+                    )}
+                    <span>{msg.role === 'user' ? 'YOU (LEAD INVESTIGATOR)' : currentAgent.name}</span>
+                  </div>
                   {msg.model && <span className="font-mono-code text-[8px] opacity-75">{msg.model.split(':')[0]}</span>}
                 </div>
                 <div className="whitespace-pre-wrap leading-relaxed">

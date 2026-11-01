@@ -49,11 +49,16 @@ export default function ReportsView({
     }
   };
 
-  // Download PDF Only using browser print-to-PDF formatting
+  // Download PDF Only using browser print-to-PDF formatting (WYSIWYG on-screen match)
   const handleDownloadPdf = () => {
     if (!activeReport) return;
     bureauAudio.typewriterClick();
+    const originalTitle = document.title;
+    document.title = `ARGUS_and_Co_Report_${selectedCaseRef}`;
     window.print();
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 1000);
   };
 
   const handleCopy = () => {
@@ -202,9 +207,10 @@ export default function ReportsView({
             {/* Document Letterhead */}
             <div className="text-center border-b-2 border-[#7a5433] pb-4 mb-6">
               <img 
-                src="/fevicon.png" 
+                src="/logo.png" 
+                onError={(e) => { e.currentTarget.src = '/fevicon.png'; }}
                 alt="ARGUS & Co." 
-                className="w-16 h-16 mx-auto mb-2 rounded-full border-2 border-[#b1844c] shadow-md object-cover bg-[#17100a]" 
+                className="w-20 h-20 mx-auto mb-2 rounded-full border-2 border-[#b1844c] shadow-md object-cover bg-[#17100a]" 
               />
               <h2 className="font-rye text-2xl md:text-3xl text-[#3b2414] tracking-wider">
                 ARGUS & Co.

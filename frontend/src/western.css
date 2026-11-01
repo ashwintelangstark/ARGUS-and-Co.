@@ -611,37 +611,63 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
-/* Print / PDF Export Styles for ARGUS and Co. Dossier */
+/* Print / PDF Export Styles for ARGUS and Co. Dossier (WYSIWYG on-screen match) */
 @media print {
-  body, html, #root, #app-container {
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
+
+  html, body, #root, #app-container {
     background: #ffffff !important;
-    color: #1a120c !important;
+    color: #2a1a0f !important;
     overflow: visible !important;
     height: auto !important;
     width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .topbar, .footer-strip, .hq-tools, button, .print\:hidden {
+  header, nav, .topbar, .footer-strip, .hq-tools, button, .print\:hidden {
     display: none !important;
   }
 
   .main-viewport {
     padding: 0 !important;
+    margin: 0 !important;
     overflow: visible !important;
+    height: auto !important;
+    display: block !important;
   }
 
   .printable-dossier {
-    background: #ffffff !important;
-    color: #1a120c !important;
-    border: 2px solid #3d2412 !important;
+    display: block !important;
+    background: #f5ecdb !important;
+    background-color: #f5ecdb !important;
+    color: #2a1a0f !important;
+    border: 3px double #a17e55 !important;
     box-shadow: none !important;
     max-width: 100% !important;
-    padding: 24px !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 32px !important;
     page-break-inside: auto;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .printable-dossier * {
-    color: #1a120c !important;
-    text-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-dossier img {
+    max-width: 90px !important;
+    display: block !important;
+    margin: 0 auto 8px auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

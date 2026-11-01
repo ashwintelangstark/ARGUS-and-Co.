@@ -106,6 +106,7 @@ export default function App() {
           <ArchivesView
             cases={cases}
             onSelectCase={handleOpenLabWithCase}
+            onRefresh={fetchCases}
           />
         )}
       </main>

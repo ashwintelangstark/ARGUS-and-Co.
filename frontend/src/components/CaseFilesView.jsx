@@ -10,6 +10,7 @@ export default function CaseFilesView({
   onRefresh, 
   onSelectCaseForLab 
 }) {
+  const activeCases = cases.filter(c => c.status !== 'Solved' && c.status !== 'Archived');
   const [caseRef, setCaseRef] = useState(`ARG-1891-00${cases.length + 1}`);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('High');
@@ -172,7 +173,7 @@ export default function CaseFilesView({
           </p>
         </div>
         <span className="badge px-3 py-1 bg-[#5b3922] border border-[#a17849] text-[#f4dfb6] font-elite text-xs">
-          {cases.length} REGISTERED DOSSIERS
+          {activeCases.length} ACTIVE DOSSIERS
         </span>
       </div>
 
@@ -385,7 +386,7 @@ export default function CaseFilesView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#a88258]">
-                {cases.map((c) => {
+                {activeCases.map((c) => {
                   const isWorking = Boolean(c.is_working_on);
                   return (
                     <tr 
@@ -460,10 +461,10 @@ export default function CaseFilesView({
                   );
                 })}
 
-                {cases.length === 0 && (
+                {activeCases.length === 0 && (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-[#7e5f3f]">
-                      No case dossiers found in active registry. Create a dossier above to begin investigation.
+                      No active case dossiers in current ledger. {cases.length > 0 ? 'All closed dossiers are sealed in the Archives.' : 'Create a dossier above to begin investigation.'}
                     </td>
                   </tr>
                 )}
