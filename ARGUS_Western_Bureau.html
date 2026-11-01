@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Detective ARGUS — Western Investigation Bureau</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Roboto+Condensed:wght@400;500;600;700&family=Rye&display=swap');
+:root{--ink:#21170f;--paper:#d9c49b;--paper2:#efe2c5;--leather:#4b2d1d;--rust:#8d4829;--gold:#c69a50;--muted:#bba77f;--line:#80613b;--night:#100d0a;--green:#a4ad75}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#100d0a;color:var(--paper2);font-family:'Roboto Condensed',sans-serif}button,input,textarea{font:inherit}button{cursor:pointer}
+#app{height:100%;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 40%,#38291d,#120e0a 72%)}
+.topbar{height:66px;flex:none;display:flex;align-items:center;gap:22px;padding:0 22px;background:linear-gradient(#1d140e,#100c08);border-bottom:2px solid #76502d;box-shadow:0 4px 18px #0009;z-index:5}
+.brand{display:flex;align-items:center;gap:12px;min-width:265px}.brandmark{width:39px;height:39px;border:1px solid var(--gold);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-size:23px;box-shadow:inset 0 0 10px #c69a5033}.brand strong{font:17px 'Rye',serif;letter-spacing:1.2px;color:#f0dfb8}.brand small{display:block;color:#b3986b;font:9px 'Special Elite',monospace;letter-spacing:2px;margin-top:4px}
+.nav{display:flex;gap:5px;flex:1}.nav button{border:1px solid transparent;background:transparent;color:#c2ad88;padding:10px 13px;border-radius:3px;font:12px 'Special Elite',monospace;letter-spacing:.4px}.nav button.active,.nav button:hover{background:#4b2d1d;border-color:#a77a43;color:#ffe7b8}.topright{font:10px 'Special Elite',monospace;color:#c3a36e;white-space:nowrap}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#9ca66c;box-shadow:0 0 8px #9ca66c;margin-right:6px}
+.main{flex:1;min-height:0;padding:12px}.view{display:none;height:100%;min-height:0}.view.active{display:flex;flex-direction:column}
+#headquarters{position:relative;border:1px solid #76502d;border-radius:4px;overflow:hidden;background:#17110c}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#09060388,transparent 28%,transparent 70%,#090603bb)}
+.hq-heading{position:absolute;top:18px;left:22px;z-index:2}.eyebrow{font:10px 'Special Elite',monospace;letter-spacing:2px;color:#d1ae70}.hq-heading h1{font:26px 'Rye',serif;margin:7px 0 4px;color:#f3dfb7;text-shadow:0 2px 8px #000}.hq-heading p{font:12px 'Special Elite',monospace;color:#d0b98e;margin:0}
+.hq-tools{position:absolute;right:18px;top:18px;display:flex;gap:8px;z-index:3}.western-btn{border:1px solid #9c7545;background:#21170fdd;color:#f0d9ad;padding:9px 12px;border-radius:3px;font:11px 'Special Elite',monospace}.western-btn:hover{background:#694027}
+.hq-dashboard{position:absolute;left:18px;right:18px;bottom:15px;display:grid;grid-template-columns:1.1fr 1.4fr 1fr;gap:9px;z-index:3}
+.dash-card{background:#1b120de8;border:1px solid #8b673d;border-top:3px solid #b1844c;padding:11px 13px;box-shadow:0 6px 18px #0008;backdrop-filter:blur(6px);min-width:0}
+.dash-card h3{font:12px 'Rye',serif;color:#e9d2a5;margin:0 0 8px}.dash-card p,.dash-card li{font:10px 'Special Elite',monospace;color:#c9b58f;line-height:1.55;margin:0}.dash-card ul{padding-left:15px;margin:0}.metric-row{display:flex;gap:14px}.metric b{display:block;font:22px 'Rye',serif;color:#f0d39a}.metric span{font:9px 'Special Elite',monospace;color:#b89c70}
+.agent-tags{position:absolute;inset:0;z-index:2;pointer-events:none}.agent-tag{position:absolute;pointer-events:auto;transform:translate(-50%,-50%);background:#1c120eea;border:1px solid #b1844c;color:#f2dfbb;padding:7px 10px;min-width:130px;text-align:left;box-shadow:0 4px 14px #0009}.agent-tag b{display:block;font:11px 'Rye',serif}.agent-tag span{display:block;font:9px 'Special Elite',monospace;color:#c5a879;margin-top:3px}.agent-tag:hover,.agent-tag.selected{border-color:#e9c47f;box-shadow:0 0 15px #d3a45b66}.agent-tag.apex{left:31%;top:43%}.agent-tag.lutkin{left:15%;top:68%}.agent-tag.argus{left:50%;top:63%}.agent-tag.vanguard{left:73%;top:42%}.agent-tag.cortex{left:86%;top:68%}
+.view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;padding:13px 16px;background:linear-gradient(#2b1b11,#1a110b);border:1px solid #76502d;border-bottom:2px solid #b1844c;flex:none}.view-head h1{font:23px 'Rye',serif;color:#f0d9ad;margin:0}.view-head p{font:11px 'Special Elite',monospace;color:#bda47b;margin:5px 0 0}.view-body{flex:1;min-height:0;overflow:auto;padding:14px;background:linear-gradient(135deg,#21170f,#120e0a);border:1px solid #76502d;border-top:0}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:13px}.card{background:#e0cda7;color:#2b1c11;border:1px solid #98754b;box-shadow:0 5px 14px #0005;padding:15px;border-radius:2px}.card h2{font:16px 'Rye',serif;margin:0 0 12px;color:#432817}.card p,.card label,.card small{font:11px 'Special Elite',monospace;line-height:1.5}.card p{color:#62482e}.muted{color:#725638}.dropzone{border:2px dashed #98754b;background:#f0e2c4;padding:30px 15px;text-align:center;cursor:pointer}.dropzone.drag{background:#d4b77f;border-color:#5d3a20}.dropzone strong{display:block;font:16px 'Rye',serif;color:#4b2d1d}.dropzone span{font:11px 'Special Elite',monospace;color:#755637;display:block;margin-top:7px}.action{border:1px solid #5d3920;background:#4b2d1d;color:#f5e3bd;padding:10px 14px;font:11px 'Special Elite',monospace;border-radius:2px}.action:hover{background:#74462b}.action:disabled{opacity:.45;cursor:not-allowed}
+input,textarea{width:100%;border:1px solid #9b7b50;background:#f5e9cf;color:#2a1a10;padding:9px;border-radius:2px;outline:none}input:focus,textarea:focus{border-color:#68401f}.formrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.field label{display:block;margin-bottom:5px;color:#694a2c}
+.file-table{width:100%;border-collapse:collapse;font:11px 'Special Elite',monospace}.file-table th{text-align:left;color:#f0dfbd;background:#50311e;padding:10px}.file-table td{padding:10px;border-bottom:1px solid #b69a6b;color:#392719}.file-table tr:nth-child(even){background:#d3bd91}.file-table button{border:0;background:transparent;color:#743d23;text-decoration:underline;font:10px 'Special Elite',monospace}
+.list-empty{padding:28px;text-align:center;color:#806344;font:12px 'Special Elite',monospace}
+.agent-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.agent-card{background:#dfcba1;border:1px solid #99734a;color:#2e1e12;padding:12px}.agent-card h3{font:14px 'Rye',serif;margin:8px 0 4px}.agent-card .role{font:10px 'Special Elite',monospace;color:#85552e;min-height:28px}.agent-card p{font:10px 'Special Elite',monospace;line-height:1.5;color:#62482e}.badge{display:inline-block;padding:4px 6px;background:#5b3922;color:#f4dfb6;font:9px 'Special Elite',monospace}
+.report-preview{white-space:pre-wrap;background:#f2e4c6;border:1px solid #a18155;color:#302014;padding:15px;min-height:210px;font:11px/1.65 'Special Elite',monospace}
+.footer{height:25px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 18px;color:#9b805a;font:9px 'Special Elite',monospace;letter-spacing:1px}
+@media(max-width:950px){.brand{min-width:190px}.nav button{padding:8px 7px;font-size:10px}.topright{display:none}.agent-grid{grid-template-columns:repeat(2,1fr)}.hq-dashboard{grid-template-columns:1fr 1fr}.hq-dashboard .dash-card:last-child{display:none}}
+@media(max-width:680px){html,body{overflow:auto}.topbar{height:auto;min-height:62px;flex-wrap:wrap;padding:9px}.brand{min-width:0;flex:1}.nav{order:3;overflow:auto;width:100%}.main{min-height:780px}.view-head{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.agent-grid{grid-template-columns:1fr 1fr}#headquarters{min-height:740px}.agent-tag{min-width:90px;padding:5px}.agent-tag b{font-size:8px}.agent-tag span{font-size:7px}.hq-dashboard{grid-template-columns:1fr;bottom:10px}.hq-dashboard .dash-card:nth-child(2){display:none}.hq-heading h1{font-size:19px}.footer{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+<header class="topbar">
+ <div class="brand"><div class="brandmark">✦</div><div><strong>DETECTIVE ARGUS</strong><small>WESTERN INVESTIGATION BUREAU</small></div></div>
+ <nav class="nav" aria-label="Main navigation">
+  <button class="active" data-view="headquarters">⌂ Headquarters</button><button data-view="casefiles">▤ Case Files</button><button data-view="lab">⚒ Investigation Lab</button><button data-view="reports">▧ Reports</button><button data-view="archives">▣ Archives</button>
+ </nav>
+ <div class="topright"><span class="dot"></span>BUREAU STATUS: ON DUTY</div>
+</header>
+<main class="main">
+<section class="view active" id="headquarters">
+ <canvas id="scene" aria-label="Three dimensional western detective office"></canvas><div class="vignette"></div>
+ <div class="hq-heading"><div class="eyebrow">THE FRONTIER DISTRICT · EST. 1891</div><h1>ARGUS DETECTIVE AGENCY</h1><p>Five specialists. One bureau. Every clue accounted for.</p></div>
+ <div class="hq-tools"><button class="western-btn" id="pauseScene">Ⅱ Pause scene</button><button class="western-btn" id="resetScene">↺ Reset view</button></div>
+ <div class="agent-tags">
+  <button class="agent-tag lutkin" data-agent="LUTKIN"><b>OFFICER LUTKIN</b><span>Forensic Intelligence Officer</span></button>
+  <button class="agent-tag apex" data-agent="APEX"><b>DETECTIVE APEX</b><span>Deputy Investigation Officer</span></button>
+  <button class="agent-tag argus" data-agent="ARGUS"><b>DETECTIVE ARGUS</b><span>Chief Investigation Officer</span></button>
+  <button class="agent-tag vanguard" data-agent="VANGUARD"><b>OFFICER VANGUARD</b><span>Intelligence Operations Officer</span></button>
+  <button class="agent-tag cortex" data-agent="CORTEX"><b>OFFICER CORTEX</b><span>Analytical Intelligence Officer</span></button>
+ </div>
+ <div class="hq-dashboard">
+  <div class="dash-card"><h3>▣ BUREAU LEDGER</h3><div class="metric-row"><div class="metric"><b id="caseMetric">0</b><span>OPEN CASES</span></div><div class="metric"><b id="evidenceMetric">0</b><span>FILES LOGGED</span></div><div class="metric"><b id="reportMetric">0</b><span>REPORTS</span></div></div></div>
+  <div class="dash-card"><h3>✦ CURRENT BUREAU ACTIVITY</h3><p id="hqActivity">The office is quiet. Open Case Files to register evidence or review a case.</p></div>
+  <div class="dash-card"><h3>♜ OFFICERS ON DUTY</h3><ul><li>ARGUS · Case command</li><li>APEX · Review & verification</li><li>LUTKIN · Evidence examination</li><li>VANGUARD · Public intelligence</li><li>CORTEX · Pattern analysis</li></ul></div>
+ </div>
+</section>
+
+<section class="view" id="casefiles">
+ <div class="view-head"><div><h1>Case Files & Evidence Register</h1><p>Register case materials, keep evidence organised and review stored records.</p></div><span class="badge" id="caseFileCount">0 ITEMS IN REGISTER</span></div>
+ <div class="view-body">
+  <div class="grid">
+   <div class="card">
+    <h2>Open a New Case Dossier</h2><div class="formrow"><div class="field"><label>CASE REFERENCE</label><input id="caseRef" value="ARG-1891-001"></div><div class="field"><label>CASE TITLE</label><input id="caseTitle" placeholder="Enter case title"></div></div>
+    <div class="formrow"><div class="field"><label>PRIORITY</label><input id="casePriority" value="High"></div><div class="field"><label>CASE CATEGORY</label><input id="caseCategory" placeholder="e.g. Document review"></div></div>
+    <div class="field" style="margin-top:12px"><label>CASE NOTES / INTAKE SUMMARY</label><textarea id="caseNotes" rows="3" placeholder="Describe the matter and the questions to investigate..."></textarea></div>
+    <div class="dropzone" id="dropzone" style="margin-top:13px"><strong>Drop evidence files here</strong><span>or click to browse · DOC, DOCX, XLS, XLSX, CSV, JPG, JPEG, HEIC, PNG, PDF, TXT</span><input id="fileInput" type="file" hidden multiple accept=".doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.heic,.png,.pdf,.txt"></div>
+    <p id="pendingFiles" class="muted">No files selected.</p><button class="action" id="saveCase">＋ Save case dossier & evidence</button>
+   </div>
+   <div class="card"><h2>Evidence Handling Notice</h2><p>Each uploaded file is registered with its filename, size, type and intake timestamp. Keep original source files unchanged. This standalone wireframe stores file records locally in this browser; it does not upload evidence to a server or perform forensic examination.</p><p><b>Recommended production controls</b></p><ul><li>Server-side access control and encryption.</li><li>Cryptographic hashes and chain-of-custody events.</li><li>Role-based evidence access and audit logs.</li><li>Source-linked analysis with human review.</li></ul><p id="saveMessage" class="muted">No case action taken yet.</p></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h2>Registered Case Dossiers</h2><div id="caseList"><div class="list-empty">No case dossiers registered. Create a dossier above.</div></div></div>
+ </div>
+</section>
+
+<section class="view" id="lab">
+ <div class="view-head"><div><h1>Investigation Laboratory</h1><p>Review the evidence register and run the prototype officer workflow.</p></div><span class="badge">OFFICER WORKBENCH</span></div>
+ <div class="view-body"><div class="grid">
+  <div class="card"><h2>Evidence Examination Bench</h2><p>Select a registered case to review its materials and prepare an investigation task.</p><div class="field"><label>SELECT CASE</label><select id="labCase" style="width:100%;padding:9px;background:#f5e9cf;border:1px solid #9b7b50;color:#2a1a10"></select></div><div id="labEvidence" class="list-empty">No case selected.</div><button class="action" id="runLab" disabled>⚒ Run officer intake workflow</button><p id="labStatus" class="muted">The demo workflow records assignments only. Connect the AI/backend services for actual analysis.</p></div>
+  <div class="card"><h2>Officer Assignments</h2><div class="agent-grid" style="grid-template-columns:1fr 1fr">
+   <div class="agent-card"><span class="badge">CHIEF</span><h3>ARGUS</h3><div class="role">Chief Investigation Officer</div><p>Coordinates the case and consolidates reviewed findings.</p></div>
+   <div class="agent-card"><span class="badge">DEPUTY</span><h3>APEX</h3><div class="role">Deputy Investigation Officer</div><p>Challenges assumptions and independently reviews conclusions.</p></div>
+   <div class="agent-card"><span class="badge">FORENSICS</span><h3>LUTKIN</h3><div class="role">Forensic Intelligence Officer</div><p>Examines digital files and documents evidence observations.</p></div>
+   <div class="agent-card"><span class="badge">INTELLIGENCE</span><h3>VANGUARD</h3><div class="role">Intelligence Operations Officer</div><p>Researches authorised public sources with traceable references.</p></div>
+   <div class="agent-card"><span class="badge">ANALYSIS</span><h3>CORTEX</h3><div class="role">Analytical Intelligence Officer</div><p>Compares records and flags anomalies for review.</p></div>
+  </div></div>
+ </div></div>
+</section>
+
+<section class="view" id="reports">
+ <div class="view-head"><div><h1>Investigation Reports</h1><p>Prepare, review and export case intake summaries.</p></div><span class="badge">REPORT DESK</span></div>
+ <div class="view-body"><div class="grid"><div class="card"><h2>Report Builder</h2><div class="field"><label>SELECT CASE DOSSIER</label><select id="reportCase" style="width:100%;padding:9px;background:#f5e9cf;border:1px solid #9b7b50;color:#2a1a10"></select></div><p>Generate a structured intake report listing the case details, evidence register and officer responsibilities.</p><button class="action" id="buildReport">▧ Generate report preview</button> <button class="action" id="downloadReport" disabled>↓ Download .txt</button></div><div class="card"><h2>Report Integrity</h2><p>Generated output is an administrative intake report, not a finding of guilt or a completed forensic opinion. Production reports should cite the exact evidence item and extraction method supporting each statement, include limitations and be approved by a human reviewer.</p></div></div><div class="report-preview" id="reportPreview" style="margin-top:14px">Select a case and generate a report preview. Reports generated here can be downloaded as text. PDF/DOCX export can be added when the production backend is connected.</div></div>
+</section>
+
+<section class="view" id="archives">
+ <div class="view-head"><div><h1>Agency Archives</h1><p>Browse locally saved dossiers and their evidence registers.</p></div><span class="badge">LOCAL ARCHIVE</span></div>
+ <div class="view-body"><div class="card"><h2>Archived Case Register</h2><p>Saved dossiers remain in this browser profile. Use the case register to inspect or remove a record.</p><div id="archiveList"><div class="list-empty">The archive is empty.</div></div></div></div>
+</section>
+</main>
+<footer class="footer"><span>ARGUS DETECTIVE AGENCY · FRONTIER DISTRICT</span><span>LOCAL PROTOTYPE · EVIDENCE IS NOT SENT TO AN AI SERVICE</span></footer>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const canvas=document.querySelector('#scene'),renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x24170f);scene.fog=new THREE.Fog(0x24170f,17,38);
+const camera=new THREE.PerspectiveCamera(44,1,.1,100);camera.position.set(0,8.5,17);camera.lookAt(0,2.3,0);
+scene.add(new THREE.HemisphereLight(0xffd8a2,0x29180e,2.1));
+const lamp=new THREE.DirectionalLight(0xffc77d,3);lamp.position.set(-6,11,7);lamp.castShadow=true;lamp.shadow.mapSize.set(1024,1024);scene.add(lamp);
+const warm=new THREE.PointLight(0xffa64b,30,18);warm.position.set(-6,5,-3);scene.add(warm);
+const candle=new THREE.PointLight(0xffd08a,14,12);candle.position.set(6,4,2);scene.add(candle);
+const mat=(c,r=.75,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const wood=mat(0x654025),darkwood=mat(0x29180f),wall=mat(0x4b3020),floor=mat(0x3a281b),brass=mat(0xb58a4d,.35,.65),paper=mat(0xd8c49a),black=mat(0x17120e),screen= new THREE.MeshStandardMaterial({color:0x32414a,emissive:0x273a3c,emissiveIntensity:.45});
+function box(p,w,h,d,m,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;p.add(o);return o}
+function cyl(p,r1,r2,h,m,x,y,z){const o=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,18),m);o.position.set(x,y,z);o.castShadow=true;p.add(o);return o}
+box(scene,24,.4,22,floor,0,-.25,0);box(scene,24,8,.4,wall,0,3.8,-9);box(scene,.4,8,22,wall,-12,3.8,0);box(scene,.4,8,22,wall,12,3.8,0);
+for(let x=-10;x<=10;x+=2)box(scene,.025,.015,21,mat(0x8a6845),x,.01,0);
+for(let z=-8;z<9;z+=2)box(scene,23,.015,.025,mat(0x8a6845),0,.01,z);
+// central case board, aged paper notes and red yarn
+box(scene,10,4.2,.3,darkwood,0,4.3,-8.65);box(scene,9.7,3.9,.07,mat(0x795638),0,4.3,-8.43);
+for(let i=0;i<18;i++){let x=-4.25+(i%6)*1.68,y=2.85+Math.floor(i/6)*1.2;let note=box(scene,.82,.62,.035,i%2?paper:mat(0xb99d70),x,y,-8.34);note.rotation.z=(i%2?.035:-.04);cyl(scene,.035,.035,.05,brass,x+.29,y+.19,-8.27)}
+const yarn=new THREE.LineBasicMaterial({color:0x9b3021});for(let i=0;i<9;i++){let pts=[new THREE.Vector3(-4+i,3.2,-8.25),new THREE.Vector3((i%2?1:-1)*2.8,4.6+(i%3)*.3,-8.22)];scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),yarn))}
+function desk(x,z,w=3){box(scene,w,.2,1.5,wood,x,1,z);for(let dx of [-w/2+.15,w/2-.15])for(let dz of [-.58,.58])box(scene,.13,.95,.13,brass,x+dx,.48,z+dz);box(scene,1.1,.06,.7,darkwood,x,.16,z)}
+function monitor(x,z){box(scene,1.15,.8,.12,black,x,2,z);box(scene,1.02,.65,.03,screen,x,2,z+.08);box(scene,.12,.35,.12,brass,x,1.42,z);box(scene,.55,.06,.3,brass,x,1.23,z)}
+function chair(x,z){cyl(scene,.55,.55,.12,darkwood,x,.65,z);cyl(scene,.08,.08,.75,brass,x,.27,z);box(scene,.9,1,.18,darkwood,x,1.25,z-.4)}
+desk(-7,-1);monitor(-7,-1.2);chair(-7,1);desk(7,-1);monitor(7,-1.2);chair(7,1);desk(-7,4,2.7);monitor(-7,3.8);chair(-7,6);desk(7,4,2.7);monitor(7,3.8);chair(7,6);
+box(scene,5.4,.22,2.8,wood,0,1.15,2.1);for(let x of [-2.35,2.35])for(let z of [1.1,3.1])box(scene,.15,1,.15,brass,x,.55,z);
+for(let x of [-3.5,3.5])for(let z of [1.4,3.2])chair(x,z);
+// western decor: beams, lanterns, wanted poster frames, sheriff-style brass insignia
+for(let x of [-8,0,8]){box(scene,3,.18,.3,darkwood,x,7.5,-1);box(scene,1.2,.18,.18,brass,x,7.35,-1)}
+for(let x of [-9,9]){box(scene,1.25,1.7,.12,darkwood,x,4.5,-8.68);box(scene,1.02,1.45,.035,paper,x,4.5,-8.59)}
+// old CRT monitors and desk accessories
+for(let x of [-8,-5,5,8]){box(scene,1.45,1,.14,darkwood,x,5.8,-8.7);box(scene,1.25,.78,.04,screen,x,5.8,-8.6)}
+const agents=[
+{name:'ARGUS',x:0,z:3.6,color:0x30241a,hat:0x21160f,accent:0xd0a45c,scale:1.08},
+{name:'APEX',x:-4.5,z:-.4,color:0x463023,hat:0x25180f,accent:0xb58a62,scale:1},
+{name:'LUTKIN',x:-8.2,z:2.5,color:0x344039,hat:0x1d1914,accent:0x9baf8b,scale:.94},
+{name:'VANGUARD',x:4.5,z:-.4,color:0x34271d,hat:0x20160f,accent:0xc08c4c,scale:1},
+{name:'CORTEX',x:8.2,z:2.5,color:0x303a3b,hat:0x1a1712,accent:0x9caa86,scale:.94}
+],figures=[];
+function makeAgent(a){
+ const g=new THREE.Group();g.position.set(a.x,0,a.z);g.scale.setScalar(a.scale);scene.add(g);const body=new THREE.Group();g.add(body);
+ const coat=mat(a.color),skin=mat(0xb98560),hair=mat(0x1b1713);
+ // long western duster torso, shoulders and lapels
+ const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.4,.75,5,10),coat);torso.position.y=1.3;torso.castShadow=true;body.add(torso);
+ box(body,.12,.75,.035,mat(a.accent),-.13,1.35,.37);box(body,.12,.75,.035,mat(a.accent),.13,1.35,.37);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.28,20,16),skin);head.position.y=2.18;head.castShadow=true;body.add(head);
+ const haircap=new THREE.Mesh(new THREE.SphereGeometry(.29,16,10,0,Math.PI*2,0,Math.PI*.58),hair);haircap.position.set(0,2.24,-.01);body.add(haircap);
+ cyl(body,.12,.13,.18,skin,0,1.96,0);
+ // cowboy hat: crown, wide brim and hat band
+ cyl(body,.19,.22,.28,mat(a.hat),0,2.48,0);const brim=new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,.055,32),mat(a.hat));brim.position.y=2.39;brim.castShadow=true;body.add(brim);cyl(body,.195,.195,.045,mat(a.accent),0,2.43,0);
+ const armGeo=new THREE.CapsuleGeometry(.13,.55,4,8);for(let s of [-1,1]){let arm=new THREE.Mesh(armGeo,coat);arm.position.set(s*.47,1.37,.02);arm.rotation.z=s*.22;body.add(arm);let hand=new THREE.Mesh(new THREE.SphereGeometry(.11,12,10),skin);hand.position.set(s*.48,1.02,.05);body.add(hand);let leg=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.62,4,8),darkwood);leg.position.set(s*.19,.43,0);body.add(leg);box(body,.27,.13,.46,black,s*.19,.08,.12)}
+ box(body,.16,.16,.04,brass,.27,1.58,.39);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.48,.018,8,40),new THREE.MeshBasicMaterial({color:a.accent}));ring.rotation.x=Math.PI/2;ring.position.y=.04;g.add(ring);
+ const glow=new THREE.PointLight(a.accent,1.2,3);glow.position.set(0,2.3,.3);g.add(glow);figures.push({name:a.name,body,ring,glow,phase:Math.random()*6});
+}
+agents.forEach(makeAgent);
+const clock=new THREE.Clock();let running=true,baseCam=[0,8.5,17];
+function resize(){let r=canvas.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/Math.max(1,r.height);camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(canvas);resize();
+function animate(){requestAnimationFrame(animate);let t=clock.getElapsedTime();if(running)figures.forEach(f=>{f.body.position.y=Math.sin(t*1.2+f.phase)*.025;f.body.rotation.y=Math.sin(t*.35+f.phase)*.035;f.ring.rotation.z=t*.18;f.glow.intensity=1.2+Math.sin(t+f.phase)*.25});renderer.render(scene,camera)}animate();
+document.querySelector('#pauseScene').onclick=e=>{running=!running;e.currentTarget.textContent=running?'Ⅱ Pause scene':'▶ Resume scene'};
+document.querySelector('#resetScene').onclick=()=>{camera.position.set(...baseCam);camera.lookAt(0,2.3,0)};
+function selectAgent(n){document.querySelectorAll('[data-agent]').forEach(b=>b.classList.toggle('selected',b.dataset.agent===n));const f=figures.find(x=>x.name===n);if(f){camera.position.x=agents.find(x=>x.name===n).x*.25;camera.position.y=7;camera.lookAt(agents.find(x=>x.name===n).x,1.8,agents.find(x=>x.name===n).z)}document.querySelector('#hqActivity').textContent=n+' selected. '+({ARGUS:'Chief investigator coordinating the bureau and case priorities.',APEX:'Deputy investigator reviewing strategy and checking conclusions.',LUTKIN:'Forensic officer assigned to digital evidence examination.',VANGUARD:'Intelligence officer assigned to authorised public-source research.',CORTEX:'Analytical officer assigned to comparison and anomaly review.'}[n])}
+document.querySelectorAll('[data-agent]').forEach(b=>b.addEventListener('click',()=>selectAgent(b.dataset.agent)));
+
+// Browser-local case archive using IndexedDB for file bytes and localStorage for compact dossier metadata.
+const DB='argus-western-bureau',STORE='evidence';let db;
+function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB,1);req.onupgradeneeded=()=>req.result.createObjectStore(STORE,{keyPath:'id'});req.onsuccess=()=>{db=req.result;resolve(db)};req.onerror=()=>reject(req.error)})}
+const ready=openDB().catch(()=>null);
+function getCases(){try{return JSON.parse(localStorage.getItem('argusCases')||'[]')}catch{return []}}
+function putCases(c){localStorage.setItem('argusCases',JSON.stringify(c))}
+function saveBlob(record){return ready.then(()=>{if(!db)return;return new Promise((res,rej)=>{let tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(record);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)})})}
+function deleteBlobs(caseId){return ready.then(()=>{if(!db)return;return new Promise(res=>{let tx=db.transaction(STORE,'readwrite'),store=tx.objectStore(STORE),req=store.openCursor();req.onsuccess=()=>{let c=req.result;if(c){if(c.value.caseId===caseId)c.delete();c.continue()}};tx.oncomplete=res})})}
+let pending=[];
+const input=document.querySelector('#fileInput'),drop=document.querySelector('#dropzone');
+function addFiles(fs){const allowed=['doc','docx','xls','xlsx','csv','jpg','jpeg','heic','png','pdf','txt'];for(const f of fs){let ext=f.name.split('.').pop().toLowerCase();if(!allowed.includes(ext)){alert('Unsupported file: '+f.name);continue}if(!pending.some(x=>x.name===f.name&&x.size===f.size))pending.push(f)}document.querySelector('#pendingFiles').textContent=pending.length?pending.map(f=>f.name+' ('+size(f.size)+')').join(' · '):'No files selected.'}
+function size(n){return n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB'}
+drop.addEventListener('click',()=>input.click());input.addEventListener('change',e=>{addFiles(e.target.files);input.value=''});
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderCases(){const cases=getCases();document.querySelector('#caseMetric').textContent=cases.length;document.querySelector('#evidenceMetric').textContent=cases.reduce((n,c)=>n+c.files.length,0);document.querySelector('#reportMetric').textContent=cases.filter(c=>c.report).length;document.querySelector('#caseFileCount').textContent=cases.length+' DOSSIERS';const rows=cases.map(c=>`<tr><td><b>${safe(c.ref)}</b><br>${safe(c.title)}</td><td>${safe(c.priority)}</td><td>${c.files.length} file(s)</td><td>${new Date(c.created).toLocaleDateString()}</td><td><button data-open="${safe(c.ref)}">Open</button> <button data-delete="${safe(c.ref)}">Delete</button></td></tr>`).join('');const table=rows?`<table class="file-table"><thead><tr><th>CASE</th><th>PRIORITY</th><th>EVIDENCE</th><th>CREATED</th><th>ACTIONS</th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="list-empty">No case dossiers registered. Create a dossier above.</div>';document.querySelector('#caseList').innerHTML=table;document.querySelector('#archiveList').innerHTML=table;document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{showView('lab');document.querySelector('#labCase').value=b.dataset.open;renderLab()});document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{if(confirm('Delete this local case dossier and its stored evidence?')){putCases(getCases().filter(c=>c.ref!==b.dataset.delete));await deleteBlobs(b.dataset.delete);renderAll()}});renderSelects()}
+function renderSelects(){const cases=getCases();for(const id of ['labCase','reportCase']){const s=document.querySelector('#'+id),old=s.value;s.innerHTML='<option value="">Choose a case dossier…</option>'+cases.map(c=>`<option value="${safe(c.ref)}">${safe(c.ref)} — ${safe(c.title)}</option>`).join('');if(cases.some(c=>c.ref===old))s.value=old}}
+function renderLab(){const c=getCases().find(x=>x.ref===document.querySelector('#labCase').value);document.querySelector('#runLab').disabled=!c;document.querySelector('#labEvidence').innerHTML=c?`<p><b>${safe(c.ref)} — ${safe(c.title)}</b></p><p>${safe(c.notes||'No intake notes.')}</p><ul>${c.files.map(f=>`<li>${safe(f.name)} · ${safe(f.size)} · ${safe(f.type)}</li>`).join('')}</ul>`:'<div class="list-empty">No case selected.</div>'}
+document.querySelector('#labCase').onchange=renderLab;
+document.querySelector('#saveCase').onclick=async()=>{const ref=document.querySelector('#caseRef').value.trim(),title=document.querySelector('#caseTitle').value.trim();if(!ref||!title){alert('Enter a case reference and case title.');return}const cases=getCases();if(cases.some(c=>c.ref===ref)){alert('That case reference already exists.');return}const entry={ref,title,priority:document.querySelector('#casePriority').value,category:document.querySelector('#caseCategory').value,notes:document.querySelector('#caseNotes').value,created:new Date().toISOString(),files:pending.map(f=>({name:f.name,size:size(f.size),type:f.type||f.name.split('.').pop().toUpperCase()})),report:null,activity:['Case dossier created.']};cases.unshift(entry);putCases(cases);for(const f of pending){try{await saveBlob({id:ref+'::'+f.name,caseId:ref,name:f.name,type:f.type,size:f.size,blob:f,added:new Date().toISOString()})}catch(e){console.warn('Could not persist evidence bytes',e)}}pending=[];document.querySelector('#pendingFiles').textContent='No files selected.';document.querySelector('#saveMessage').textContent='Dossier '+ref+' saved to the local archive.';renderAll()};
+function renderAll(){renderCases();renderLab();document.querySelector('#hqActivity').textContent=getCases().length?'Latest dossier: '+getCases()[0].ref+' — '+getCases()[0].title+'. Open Case Files or Investigation Lab to continue.':'The office is quiet. Open Case Files to register evidence or review a case.'}
+function showView(name){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===name));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));if(name==='headquarters'){resize()}if(name==='lab')renderLab()}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
+document.querySelector('#runLab').onclick=()=>{const c=getCases().find(x=>x.ref===document.querySelector('#labCase').value);if(!c)return;c.activity.push('Officer intake workflow queued at '+new Date().toLocaleString());putCases(getCases().map(x=>x.ref===c.ref?c:x));document.querySelector('#labStatus').textContent='Intake workflow recorded for '+c.ref+'. ARGUS: coordination · LUTKIN: file examination queue · VANGUARD: public-source research queue · CORTEX: comparison queue · APEX: independent review queue. This prototype does not run AI analysis.';document.querySelector('#hqActivity').textContent='Investigation workflow queued for '+c.ref+'. See Investigation Lab for officer assignments.';renderAll()};
+let currentReport='';
+function buildReport(){const c=getCases().find(x=>x.ref===document.querySelector('#reportCase').value);if(!c){alert('Select a case dossier first.');return}currentReport=`DETECTIVE ARGUS — CASE INTAKE REPORT\n${'='.repeat(55)}\nCase reference: ${c.ref}\nTitle: ${c.title}\nCategory: ${c.category||'Not specified'}\nPriority: ${c.priority||'Not specified'}\nCreated: ${new Date(c.created).toLocaleString()}\n\nINTAKE NOTES\n${c.notes||'No notes supplied.'}\n\nREGISTERED EVIDENCE (${c.files.length})\n${c.files.map((f,i)=>`${i+1}. ${f.name} | ${f.size} | ${f.type}`).join('\n')||'No files attached.'}\n\nOFFICER RESPONSIBILITIES\nARGUS — Chief Investigation Officer: coordinates the case and consolidates reviewed findings.\nAPEX — Deputy Investigation Officer: independently reviews assumptions and conclusions.\nLUTKIN — Forensic Intelligence Officer: examines digital evidence and documents observations.\nVANGUARD — Intelligence Operations Officer: researches authorised public sources with citations.\nCORTEX — Analytical Intelligence Officer: compares records and flags anomalies for review.\n\nSTATUS & LIMITATIONS\nThis is a case intake and evidence register report generated by the standalone UI prototype. It does not represent completed AI analysis, forensic findings, or a determination of guilt. Each substantive finding in a production report must cite its source evidence, method, limitations and human reviewer.\n`;document.querySelector('#reportPreview').textContent=currentReport;document.querySelector('#downloadReport').disabled=false;c.report=true;putCases(getCases().map(x=>x.ref===c.ref?c:x));renderAll()}
+document.querySelector('#buildReport').onclick=buildReport;
+document.querySelector('#downloadReport').onclick=()=>{if(!currentReport)return;const blob=new Blob([currentReport],{type:'text/plain'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(document.querySelector('#reportCase').value||'ARGUS')+'-intake-report.txt';a.click();URL.revokeObjectURL(url)};
+renderAll();
+</script>
+</body></html>

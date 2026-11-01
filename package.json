@@ -1,0 +1,15 @@
+{
+  "name": "argus-and-co",
+  "version": "1.0.0",
+  "description": "ARGUS and Co. — AI Agents Based Investigation Agency with Ultra-Realistic 3D Experience",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "start": "cd backend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
