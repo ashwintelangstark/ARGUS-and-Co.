@@ -129,7 +129,7 @@ export default function EvidenceBoard({ caseRef }) {
               setIsPresenting(true);
             }}
             className="western-btn-gold text-[11px] py-1 px-3.5 font-bold flex items-center gap-1.5 shadow"
-            title="Begin autonomous comic-book style cinematic case presentation"
+            title="Begin autonomous cinematic detective case presentation"
           >
             <PlayCircle size={14} className="text-[#3b2413]" />
             <span>Present the Case</span>

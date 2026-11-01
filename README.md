@@ -2,7 +2,7 @@
 
 An AI-Agent-Powered Investigation Agency web application featuring ultra-realistic 3D character avatars, physical/digital evidence examination, autonomous multi-agent deliberations, and certified forensic dossiers.
 
-Built with **React + Vite**, **Node.js + Express**, **SQLite (WAL Mode)**, **Three.js**, and **OpenRouter Free Tier Models**.
+Built with **React + Vite**, **Node.js + Express**, **Secure Relational Bureau Vault**, **Three.js**, and **OpenRouter Free Tier Models**.
 
 ---
 
@@ -13,7 +13,7 @@ Built with **React + Vite**, **Node.js + Express**, **SQLite (WAL Mode)**, **Thr
 | **Frontend** | React 18, Vite 5, Tailwind CSS | Modular, responsive noir Western cyberpunk interface with typewriter sound effects and tactile paper/wood textures. |
 | **3D Engine** | Three.js (r160) | Ultra-realistic 3D Bureau Headquarters, animated avatars, subsurface scattering skin shaders, eye tracking, blinking, voice pulsing, and biometric inspection modes. |
 | **Backend** | Node.js (v24), Express | REST API, Server-Sent Events (SSE) streaming for real-time AI deliberations, and file upload processing with SHA-256 hash generation. |
-| **Database** | SQLite (`node:sqlite` / WAL Mode) | Embedded relational database with tables for cases, evidence custody, clues & red yarn graphs, officer deliberations, and certified reports. |
+| **Database** | Embedded Relational Vault (WAL Mode) | Secure evidence ledger and relational storage with tables for cases, evidence custody, clues & red yarn graphs, officer deliberations, and certified reports. |
 | **AI Multi-Agent** | OpenRouter Free Models | 100% free models (`openrouter/free`, `google/gemma-4-31b-it:free`, `liquid/lfm-2.5-2.6b:free`, `nvidia/nemotron-3.5-lightning:free`, etc.) with automatic fallback. |
 
 ---

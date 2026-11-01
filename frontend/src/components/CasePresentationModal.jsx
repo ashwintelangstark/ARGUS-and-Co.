@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { kokoroVoiceEngine } from '../utils/kokoroVoiceEngine.js';
 import { bureauAudio } from '../utils/audio.js';
 import { 
-  Play, Pause, RotateCcw, ChevronLeft, ChevronRight, 
-  X, Volume2, Sparkles, CheckCircle2 
+  RotateCcw, ChevronLeft, ChevronRight, 
+  X, Volume2, Shield, Award, CheckCircle2,
+  FileText, Activity
 } from 'lucide-react';
 
 const OFFICERS_ORDER = [
@@ -14,8 +15,8 @@ const OFFICERS_ORDER = [
     badge: 'ANALYTICS',
     avatar: '/avatars/cortex.png',
     accent: '#10b981',
-    soundEffect: '💥 *ANOMALY DETECTED*',
-    comicTag: 'CORRELATION MATRIX COMPUTED',
+    cadenceTag: 'PROBABILITY MATRICES & ANOMALY CORRELATION',
+    specialty: 'Algorithmic correlation of transaction timelines, anomaly vectors, and relational suspect graphs.',
     defaultText: (caseTitle, clueCount) => 
       `Attention Bureau officers. I have cross-calculated the probability vectors across all ${clueCount || 5} nodes for case "${caseTitle}". Anomaly indices indicate non-random coordination across the transaction timelines with a 94.2% correlation. The relational link graph confirms our primary suspects intersected at the telegraph terminal prior to the reported incident.`
   },
@@ -26,8 +27,8 @@ const OFFICERS_ORDER = [
     badge: 'INTEL & OSINT',
     avatar: '/avatars/vanguard.png',
     accent: '#f97316',
-    soundEffect: '⚡ *OSINT INTERCEPT*',
-    comicTag: 'TELEGRAPH WIRETAP & TRANSIT CORRIDORS',
+    cadenceTag: 'FIELD OPERATIONS & WIRE INTERCEPT VECTORS',
+    specialty: 'Public manifests, wiretap intercepts, transit logs, syndicate entities, and field reconnaissance.',
     defaultText: (caseTitle) => 
       `Vanguard here from field ops. Public registries, shipping manifests, and wire intercepts confirm suspect movements matching Cortex's anomaly vectors. We tracked transit coordinates across the district boundary where an unscheduled cargo crate was cleared. The ciphered telegraph ribbons directly corroborate the presence of unauthorized operatives on site.`
   },
@@ -38,8 +39,8 @@ const OFFICERS_ORDER = [
     badge: 'FORENSICS',
     avatar: '/avatars/lutkin.png',
     accent: '#00d2ff',
-    soundEffect: '🔬 *CRYPTOGRAPHIC FORENSICS*',
-    comicTag: 'SHA-256 & CHEMICAL FORGERY FORENSICS',
+    cadenceTag: 'DIGITAL HASHES & CHEMICAL FORGERY FORENSICS',
+    specialty: 'Cryptographic SHA-256 verification, microscopic tool mark analysis, and ink chromatography.',
     defaultText: (caseTitle) => 
       `Forensics division reporting. Cryptographic SHA-256 hashes on all intake artifacts have been verified with zero byte tampering. Microscopic tool mark analysis on the security latch proves the locking tumblers were operated from within using an authentic supervisor master key with zero forced entry, and document ink chromatography proves the register signatures were chemically forged.`
   },
@@ -50,8 +51,8 @@ const OFFICERS_ORDER = [
     badge: 'DEPUTY',
     avatar: '/avatars/apex.png',
     accent: '#a855f7',
-    soundEffect: '⚔️ *CONTRARIAN SCRUTINY*',
-    comicTag: 'ADVERSARIAL STRESS-TEST & CROSS-EXAM',
+    cadenceTag: 'ADVERSARIAL STRESS-TEST & RED-TEAM AUDIT',
+    specialty: 'Contrarian hypothesis testing, confirmation bias defense, and adversarial scrutiny.',
     defaultText: (caseTitle) => 
       `Hold your horses, squad. As deputy reviewer, I cross-examined every working theory. I challenged whether the courier was being framed as a decoy, and stress-tested the timeline against defense counsel objections. The defense claims an outsider breached the perimeter, but the master key markings and altered night patrol logs prove the inside job hypothesis holds water!`
   },
@@ -62,8 +63,8 @@ const OFFICERS_ORDER = [
     badge: 'CHIEF',
     avatar: '/avatars/argus.png',
     accent: '#f59e0b',
-    soundEffect: '🏆 *FINAL VERDICT & CULPRIT UNMASKED*',
-    comicTag: 'BUREAU VERDICT RENDERED · CASE RESOLVED',
+    cadenceTag: 'CHIEF VERDICT & CULPRIT APPREHENSION DIRECTIVE',
+    specialty: 'Synthesis of all 4 investigative branches, auditing for omitted clues, and definitive case closure.',
     defaultText: (caseTitle) => 
       `As Chief Investigation Officer, I have evaluated all evidence presented by my four specialists. First, auditing for any overlooked information: every clock skew, wire intercept frequency, lock tumbler mark, and financial cluster has been accounted for. No detail was left behind. By joining all four intelligence vectors, the conclusion of ARGUS and Co. is definitive: the primary culprit behind "${caseTitle}" is the trusted inside supervisor acting in premeditated conspiracy with the external courier! Their motive was financial liquidation prior to audit. Executive apprehension warrants are hereby dispatched. Case officially resolved!`
   }
@@ -78,80 +79,134 @@ export default function CasePresentationModal({
 }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [autoAdvance, setAutoAdvance] = useState(true);
-  const [activeWordIndex, setActiveWordIndex] = useState(0);
+  const [autoAdvance, setAutoAdvance] = useState(false);
 
-  const activeOfficer = OFFICERS_ORDER[currentStep];
+  const advanceTimerRef = useRef(null);
+  const autoAdvanceRef = useRef(autoAdvance);
+
+  // Keep autoAdvance ref in sync without re-triggering speech
+  useEffect(() => {
+    autoAdvanceRef.current = autoAdvance;
+  }, [autoAdvance]);
+
+  // Clamp step safely
+  const safeStep = Math.max(0, Math.min(currentStep, OFFICERS_ORDER.length - 1));
+  const activeOfficer = OFFICERS_ORDER[safeStep] || OFFICERS_ORDER[0];
   const caseTitle = caseData?.title || caseRef || 'The Investigation';
+
+  const clearAdvanceTimer = () => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+  };
 
   // Find if officer has a specific message in deliberations
   const getSpeechText = (officer) => {
-    if (deliberations && deliberations.length > 0) {
+    if (!officer) return '';
+    if (deliberations && Array.isArray(deliberations) && deliberations.length > 0) {
       const match = deliberations.find(d => {
-        const matchesOfficer = (d.officer && d.officer.toUpperCase() === officer.id) ||
-                               (d.officer_name && d.officer_name.toUpperCase().includes(officer.id));
+        if (!d || typeof d.message !== 'string') return false;
+        const officerStr = typeof d.officer === 'string' ? d.officer.toUpperCase() : '';
+        const nameStr = typeof d.officer_name === 'string' ? d.officer_name.toUpperCase() : '';
+        const matchesOfficer = officerStr === officer.id || nameStr.includes(officer.id);
         const isNotCorrupted = officer.id === 'ARGUS' || !d.message.includes('[DETECTIVE ARGUS');
         return matchesOfficer && isNotCorrupted;
       });
-      if (match && match.message && match.message.length > 30) {
-        return match.message;
+      if (match && typeof match.message === 'string' && match.message.trim().length > 30) {
+        return match.message.trim();
       }
     }
-    return officer.defaultText(caseTitle, clues.length);
+    return typeof officer.defaultText === 'function' ? officer.defaultText(caseTitle, clues?.length || 0) : '';
   };
 
   const currentText = getSpeechText(activeOfficer);
 
   // Trigger speech when step changes
   useEffect(() => {
+    clearAdvanceTimer();
     bureauAudio.typewriterClick();
+
     kokoroVoiceEngine.speak(activeOfficer.id, currentText, {
       onStart: () => setIsSpeaking(true),
-      onWord: (charIdx) => setActiveWordIndex(charIdx),
       onEnd: () => {
         setIsSpeaking(false);
-        if (autoAdvance && currentStep < OFFICERS_ORDER.length - 1) {
-          setTimeout(() => {
-            setCurrentStep(prev => prev + 1);
-          }, 1200);
+        if (autoAdvanceRef.current && safeStep < OFFICERS_ORDER.length - 1) {
+          clearAdvanceTimer();
+          advanceTimerRef.current = setTimeout(() => {
+            setCurrentStep(prev => (prev < OFFICERS_ORDER.length - 1 ? prev + 1 : prev));
+          }, 2000);
         }
       },
       onError: () => setIsSpeaking(false)
     });
 
     return () => {
+      clearAdvanceTimer();
       kokoroVoiceEngine.stop();
     };
-  }, [currentStep, autoAdvance]);
+  }, [safeStep]);
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      clearAdvanceTimer();
+      kokoroVoiceEngine.stop();
+    };
+  }, []);
 
   const handleNext = () => {
+    clearAdvanceTimer();
+    kokoroVoiceEngine.stop();
     bureauAudio.telegraphBeep();
-    if (currentStep < OFFICERS_ORDER.length - 1) {
+
+    if (safeStep < OFFICERS_ORDER.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
-      kokoroVoiceEngine.stop();
       onClose();
     }
   };
 
   const handlePrev = () => {
+    clearAdvanceTimer();
+    kokoroVoiceEngine.stop();
     bureauAudio.telegraphBeep();
-    if (currentStep > 0) {
+
+    if (safeStep > 0) {
       setCurrentStep(prev => prev - 1);
     }
   };
 
+  const handleSelectStep = (idx) => {
+    if (idx === safeStep) return;
+    clearAdvanceTimer();
+    kokoroVoiceEngine.stop();
+    bureauAudio.telegraphBeep();
+    setCurrentStep(idx);
+  };
+
   const handleReplay = () => {
+    clearAdvanceTimer();
+    kokoroVoiceEngine.stop();
     bureauAudio.cameraShutter();
+
     kokoroVoiceEngine.speak(activeOfficer.id, currentText, {
       onStart: () => setIsSpeaking(true),
-      onWord: (charIdx) => setActiveWordIndex(charIdx),
-      onEnd: () => setIsSpeaking(false),
+      onEnd: () => {
+        setIsSpeaking(false);
+        if (autoAdvanceRef.current && safeStep < OFFICERS_ORDER.length - 1) {
+          clearAdvanceTimer();
+          advanceTimerRef.current = setTimeout(() => {
+            setCurrentStep(prev => (prev < OFFICERS_ORDER.length - 1 ? prev + 1 : prev));
+          }, 2000);
+        }
+      },
       onError: () => setIsSpeaking(false)
     });
   };
 
   const handleClose = () => {
+    clearAdvanceTimer();
     kokoroVoiceEngine.stop();
     onClose();
   };
@@ -159,159 +214,181 @@ export default function CasePresentationModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 select-none">
       
-      {/* Comic Book Frame Container */}
-      <div 
-        className="w-full max-w-4xl bg-[#f5ead2] text-[#1c1209] rounded-lg border-4 border-black shadow-[14px_14px_0px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[92vh] relative"
-        style={{
-          backgroundImage: `
-            radial-gradient(#d1b78c 1px, transparent 1px),
-            radial-gradient(#d1b78c 1px, #f5ead2 1px)
-          `,
-          backgroundSize: '16px 16px',
-          backgroundPosition: '0 0, 8px 8px'
-        }}
-      >
+      {/* Western Noir Bureau Chamber Container */}
+      <div className="w-full max-w-4xl bg-[#1b120c] text-[#f4ecd8] rounded-lg border-2 border-[#8b653e] shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col max-h-[92vh] relative">
         
-        {/* Top Comic Action Header Banner */}
-        <div 
-          className="p-3 sm:p-4 border-b-4 border-black flex items-center justify-between shadow-md"
-          style={{ backgroundColor: activeOfficer.accent }}
-        >
+        {/* Western Header Ribbon */}
+        <div className="px-4 py-3 bg-gradient-to-r from-[#2a170d] via-[#1c1008] to-[#2a170d] border-b-2 border-[#805a34] flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
-            <span className="bg-black text-white font-rye px-2.5 py-1 text-xs tracking-wider rounded-sm shadow uppercase transform -rotate-1">
-              PANEL {currentStep + 1} OF 5
-            </span>
-            <div className="text-black font-extrabold font-rye text-base sm:text-lg tracking-wider drop-shadow-sm flex items-center gap-2">
-              <span>{activeOfficer.soundEffect}</span>
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#e5be7a] via-[#c69a50] to-[#784e1b] flex items-center justify-center border border-[#ffe3a6] shadow">
+              <Shield size={14} className="text-[#2b170c]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-rye text-xs sm:text-sm text-[#f5deb3] tracking-wide">
+                  ARGUS & CO. · DETECTIVE BUREAU CHAMBER
+                </span>
+                <span className="text-[10px] font-elite px-2 py-0.5 rounded bg-[#3b2314] text-[#ffd899] border border-[#7a4e28]">
+                  OFFICER {safeStep + 1} OF 5
+                </span>
+              </div>
+              <p className="text-[10px] font-elite text-[#bd9f6f]">
+                Sequential Multi-Agent Forensic Testimony & Executive Culprit Resolution
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleClose}
-              className="w-8 h-8 rounded-full bg-black text-white font-bold flex items-center justify-center border-2 border-white hover:bg-red-800 transition-colors shadow"
-              title="Close Presentation"
-            >
-              <X size={18} />
-            </button>
-          </div>
+          <button
+            onClick={handleClose}
+            className="w-7 h-7 rounded-full bg-[#2a1b12] text-[#d4af37] border border-[#7e5832] hover:bg-red-950 hover:text-white transition-colors flex items-center justify-center shadow"
+            title="Exit Presentation"
+          >
+            <X size={15} />
+          </button>
         </div>
 
-        {/* Comic Panel Body */}
-        <div className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-4">
+        {/* Presentation Stage Body */}
+        <div className="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4 bg-gradient-to-b from-[#180f0a] via-[#150d08] to-[#120a06]">
           
-          {/* Main Character Spotlight & Dialogue Box */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+          {/* Main Officer Spotlight & Docket Parchment */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
             
-            {/* Officer Portrait in Comic Border */}
-            <div className="md:col-span-4 flex flex-col items-center">
-              <div className="relative group">
-                {/* Comic Ink Drop Shadow Box */}
-                <div 
-                  className="w-44 h-56 sm:w-52 sm:h-64 rounded-md border-4 border-black bg-[#1b120a] shadow-[8px_8px_0px_#000] overflow-hidden relative"
-                >
-                  <img
-                    src={activeOfficer.avatar}
-                    alt={activeOfficer.name}
-                    className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
-                  />
+            {/* Officer Portrait & Dossier Profile (Left Column) */}
+            <div className="md:col-span-4 flex flex-col items-center bg-[#21150d] p-4 rounded-md border border-[#6b4728] shadow-lg justify-between">
+              <div className="w-full flex flex-col items-center">
+                
+                {/* Portrait with Gold Vintage Border */}
+                <div className="relative group">
+                  <div className="w-40 h-48 sm:w-44 sm:h-52 rounded border-2 border-[#b88c4d] bg-[#120b06] shadow-[0_8px_20px_rgba(0,0,0,0.8)] overflow-hidden relative">
+                    <img
+                      src={activeOfficer.avatar}
+                      alt={activeOfficer.name}
+                      className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                    />
 
-                  {/* Comic sound effect / badge overlay */}
-                  <div 
-                    className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-rye font-bold text-white rounded border-2 border-black shadow"
-                    style={{ backgroundColor: activeOfficer.accent }}
-                  >
-                    {activeOfficer.badge}
-                  </div>
-
-                  {/* Speaking indicator overlay */}
-                  {isSpeaking && (
-                    <div className="absolute bottom-2 right-2 flex items-end gap-1 px-2 py-1 bg-black/80 rounded border border-white/50">
-                      <span className="w-1.5 h-3 bg-amber-400 animate-pulse rounded-full" />
-                      <span className="w-1.5 h-5 bg-amber-400 animate-pulse delay-75 rounded-full" />
-                      <span className="w-1.5 h-2 bg-amber-400 animate-pulse delay-150 rounded-full" />
-                      <span className="w-1.5 h-4 bg-amber-400 animate-pulse rounded-full" />
+                    {/* Officer Division Badge */}
+                    <div 
+                      className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-rye font-bold text-white rounded border border-black/40 shadow-md"
+                      style={{ backgroundColor: activeOfficer.accent }}
+                    >
+                      {activeOfficer.badge}
                     </div>
-                  )}
+
+                    {/* Acoustic Waveform Overlay */}
+                    {isSpeaking && (
+                      <div className="absolute bottom-2 right-2 flex items-end gap-1 px-2 py-1 bg-black/85 rounded border border-[#c69a50]/60 shadow">
+                        <span className="w-1 h-2.5 bg-amber-400 animate-pulse rounded-full" />
+                        <span className="w-1 h-4 bg-amber-400 animate-pulse delay-75 rounded-full" />
+                        <span className="w-1 h-2 bg-amber-400 animate-pulse delay-150 rounded-full" />
+                        <span className="w-1 h-3.5 bg-amber-400 animate-pulse rounded-full" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Officer Name & Designation */}
+                <div className="mt-3 text-center w-full">
+                  <h3 className="font-rye text-base text-[#f5deb3] font-bold leading-tight">
+                    {activeOfficer.name}
+                  </h3>
+                  <p className="font-elite text-xs text-[#c4a475] font-semibold mt-0.5">
+                    {activeOfficer.role}
+                  </p>
                 </div>
               </div>
 
-              {/* Officer Title Banner */}
-              <div className="mt-2.5 text-center">
-                <h3 className="font-rye text-base text-[#24170f] font-bold leading-tight">
-                  {activeOfficer.name}
-                </h3>
-                <p className="font-elite text-xs text-[#523720] font-semibold mt-0.5">
-                  {activeOfficer.role}
+              {/* Acoustic Status & Specialty Footer */}
+              <div className="w-full mt-3 pt-3 border-t border-[#54361e] text-[11px] font-elite">
+                <div className="flex items-center justify-between text-[#c69a50] mb-1.5">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Volume2 size={13} className={isSpeaking ? 'animate-bounce text-amber-400' : 'text-[#8c6b43]'} />
+                    <span>{isSpeaking ? 'Voicing Testimony...' : 'Audio Ready'}</span>
+                  </span>
+                  <span className="font-mono-code text-[10px] text-[#9c7b4e]">
+                    CADENCE ACTIVE
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#a68962] leading-relaxed line-clamp-2">
+                  {activeOfficer.specialty}
                 </p>
               </div>
             </div>
 
-            {/* Comic Speech Bubble */}
+            {/* Bureau Docket Parchment Scroll (Right Column) */}
             <div className="md:col-span-8 flex flex-col justify-center">
-              <div className="relative bg-white text-[#1c1209] p-5 sm:p-6 rounded-2xl border-4 border-black shadow-[8px_8px_0px_#000]">
+              <div className="relative bg-[#f5ecdb] text-[#1e1209] p-5 sm:p-6 rounded-md border-2 border-[#8b653e] shadow-[0_10px_25px_rgba(0,0,0,0.7)] flex flex-col justify-between h-full">
                 
-                {/* Speech Bubble Pointer Triangle */}
-                <div 
-                  className="hidden md:block absolute -left-5 top-12 w-0 h-0 border-y-[14px] border-y-transparent border-r-[22px] border-r-black"
-                />
-                <div 
-                  className="hidden md:block absolute -left-3.5 top-12 w-0 h-0 border-y-[12px] border-y-transparent border-r-[20px] border-r-white"
-                />
+                {/* Parchment Top Docket Header */}
+                <div>
+                  <div className="flex items-center justify-between border-b-2 border-[#9e764a]/30 pb-2.5 mb-3">
+                    <div className="flex items-center gap-2">
+                      <FileText size={15} className="text-[#7c532b]" />
+                      <span className="text-[11px] font-rye font-bold tracking-wider text-[#4a2e16] uppercase">
+                        {activeOfficer.cadenceTag}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 font-mono-code text-[10px] text-[#694828] bg-[#ebd8b7] px-2 py-0.5 rounded border border-[#caa679]">
+                      <span>DOSSIER:</span>
+                      <strong className="text-[#3b2312]">{caseRef}</strong>
+                    </div>
+                  </div>
 
-                {/* Comic Tag Topline */}
-                <div className="flex items-center justify-between border-b-2 border-dashed border-gray-400 pb-2 mb-3">
-                  <span className="text-[10px] font-rye font-bold tracking-wider text-gray-700 uppercase">
-                    {activeOfficer.comicTag}
-                  </span>
-                  <div className="flex items-center gap-1.5 text-xs text-amber-900 font-bold">
-                    <Volume2 size={15} className={isSpeaking ? 'text-amber-600 animate-bounce' : 'text-gray-400'} />
-                    <span className="font-elite text-[11px]">{isSpeaking ? 'Voicing Testimony...' : 'Audio Ready'}</span>
+                  {/* Testimony Body Text in Typewriter Style */}
+                  <div className="text-sm sm:text-base font-elite font-normal leading-relaxed text-[#23150c] whitespace-pre-wrap max-h-[220px] overflow-y-auto pr-2 scrollbar-thin">
+                    "{currentText}"
                   </div>
                 </div>
 
-                {/* Dialogue Text in Comic Font */}
-                <div className="text-sm sm:text-base font-elite font-bold leading-relaxed text-[#140c06] whitespace-pre-wrap max-h-[220px] overflow-y-auto pr-2">
-                  "{currentText}"
-                </div>
-
-                {/* Case Reference Footer */}
-                <div className="mt-3 pt-2 border-t border-gray-300 flex items-center justify-between text-[10px] font-mono-code text-gray-600">
-                  <span>ARGUS & CO. PRESENTATION ENGINE</span>
-                  <span>CASE: {caseRef}</span>
+                {/* Docket Bottom Protocol Stamp */}
+                <div className="mt-4 pt-3 border-t border-[#9e764a]/30 flex items-center justify-between text-[10px] font-elite text-[#6e4e30]">
+                  <div className="flex items-center gap-1.5">
+                    <Activity size={12} className="text-[#9e6735]" />
+                    <span>ARGUS BUREAU MULTI-AGENT INFERENCE ENGINE</span>
+                  </div>
+                  <span className="font-mono-code text-[#4a321d]">VERIFIED RECORD · STAGE {safeStep + 1}/5</span>
                 </div>
               </div>
             </div>
 
           </div>
 
-          {/* Officer Navigation Thumbnails Row */}
-          <div className="grid grid-cols-5 gap-2 pt-2">
+          {/* 5 Officers Progression Tab Bar */}
+          <div className="grid grid-cols-5 gap-2 pt-1">
             {OFFICERS_ORDER.map((off, idx) => {
-              const isCurrent = idx === currentStep;
+              const isCurrent = idx === safeStep;
+              const isPast = idx < safeStep;
+
               return (
                 <button
                   key={off.id}
-                  onClick={() => {
-                    bureauAudio.telegraphBeep();
-                    setCurrentStep(idx);
-                  }}
-                  className={`p-1.5 rounded border-2 transition-all flex items-center gap-2 ${
+                  onClick={() => handleSelectStep(idx)}
+                  className={`p-2 rounded border transition-all flex items-center gap-2 text-left ${
                     isCurrent 
-                      ? 'bg-black text-white border-black shadow-md scale-105' 
-                      : 'bg-[#ebdcc0] text-[#301c10] border-[#8a5d35] hover:bg-[#e2cead]'
+                      ? 'bg-[#2b1910] text-[#ffe6b8] border-[#c69a50] ring-2 ring-[#c69a50]/40 shadow-lg scale-102' 
+                      : 'bg-[#1a110a] text-[#b89a74] border-[#52351e] hover:bg-[#24170e] hover:text-[#faebd7]'
                   }`}
                 >
-                  <img
-                    src={off.avatar}
-                    alt={off.name}
-                    className="w-8 h-8 rounded object-cover border border-white flex-shrink-0"
-                  />
-                  <div className="text-left hidden sm:block truncate">
-                    <span className="block text-[8px] font-bold uppercase truncate" style={{ color: isCurrent ? off.accent : '#5e3e26' }}>
+                  <div className="relative flex-shrink-0">
+                    <img
+                      src={off.avatar}
+                      alt={off.name}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded object-cover border border-[#8a653d]"
+                    />
+                    {isPast && (
+                      <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-600 rounded-full flex items-center justify-center text-white">
+                        <CheckCircle2 size={9} />
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="hidden sm:block truncate">
+                    <span 
+                      className="block text-[8px] font-bold uppercase truncate"
+                      style={{ color: isCurrent ? off.accent : '#997652' }}
+                    >
                       {off.badge}
                     </span>
-                    <strong className="block text-[10px] font-rye truncate leading-none">
+                    <strong className="block text-[11px] font-rye truncate leading-none mt-0.5">
                       {off.name.split(' ')[1]}
                     </strong>
                   </div>
@@ -322,51 +399,53 @@ export default function CasePresentationModal({
 
         </div>
 
-        {/* Comic Presentation Control Footer */}
-        <div className="p-3 sm:p-4 bg-[#21140c] border-t-4 border-black flex flex-wrap items-center justify-between gap-3 text-white">
-          <div className="flex items-center gap-2">
+        {/* Western Action Control Bar (Footer) */}
+        <div className="px-4 py-3 bg-[#1e130b] border-t-2 border-[#6f4b2b] flex flex-wrap items-center justify-between gap-3 text-[#f2e2c4]">
+          
+          <div className="flex items-center gap-3">
             <button
               onClick={handleReplay}
-              className="western-btn text-xs py-1.5 px-3 flex items-center gap-1.5"
+              className="western-btn text-xs py-1.5 px-3 flex items-center gap-1.5 shadow"
               title="Replay Voice Testimony"
             >
               <RotateCcw size={13} />
-              <span>Replay Voice</span>
+              <span>Replay Testimony</span>
             </button>
 
-            <label className="flex items-center gap-1.5 text-xs font-elite text-[#ebdcc0] cursor-pointer pl-2">
+            <label className="flex items-center gap-1.5 text-xs font-elite text-[#cfb288] cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={autoAdvance}
                 onChange={(e) => setAutoAdvance(e.target.checked)}
-                className="rounded border-[#8a5d35] text-amber-600 focus:ring-amber-500"
+                className="rounded border-[#8a5d35] text-amber-600 focus:ring-amber-500 bg-[#2b170c]"
               />
-              <span>Auto-advance to next officer</span>
+              <span>Auto-advance after testimony</span>
             </label>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrev}
-              disabled={currentStep === 0}
+              disabled={safeStep === 0}
               className={`px-3 py-1.5 rounded text-xs font-elite font-bold flex items-center gap-1 border transition-all ${
-                currentStep === 0 
-                  ? 'opacity-40 cursor-not-allowed border-gray-600 text-gray-400' 
-                  : 'bg-[#3b2516] hover:bg-[#52331e] text-[#f7e6ca] border-[#8a5d35]'
+                safeStep === 0 
+                  ? 'opacity-35 cursor-not-allowed border-[#47301e] text-[#6b5038] bg-[#170e09]' 
+                  : 'bg-[#2b1a11] hover:bg-[#3d2417] text-[#faedd4] border-[#7d5633]'
               }`}
             >
               <ChevronLeft size={14} />
-              <span>Previous</span>
+              <span>Previous Officer</span>
             </button>
 
             <button
               onClick={handleNext}
               className="western-btn-gold text-xs py-1.5 px-4 font-bold flex items-center gap-1.5 shadow"
             >
-              <span>{currentStep === OFFICERS_ORDER.length - 1 ? 'Conclude Presentation ✓' : 'Next Officer'}</span>
+              <span>{safeStep === OFFICERS_ORDER.length - 1 ? 'Conclude Presentation ✓' : 'Next Officer'}</span>
               <ChevronRight size={14} />
             </button>
           </div>
+
         </div>
 
       </div>
@@ -374,4 +453,3 @@ export default function CasePresentationModal({
     </div>
   );
 }
-

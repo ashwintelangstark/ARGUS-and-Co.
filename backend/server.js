@@ -593,7 +593,7 @@ app.get('/api/health', (req, res) => {
     bureau: 'ARGUS and Co. Western Investigation Bureau',
     freeModels: FREE_MODELS,
     agents: AGENT_PROFILES,
-    database: 'SQLite (WAL mode)',
+    database: 'Secure Bureau Data Vault',
     uptime: process.uptime()
   });
 });
