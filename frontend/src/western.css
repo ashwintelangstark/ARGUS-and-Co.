@@ -615,7 +615,7 @@ input:focus, textarea:focus, select:focus {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 0; /* Full bleed eliminates white borders completely */
+    margin: 10mm 12mm 12mm 12mm;
   }
 
   html, body, #root, #app-container, .main-viewport {
@@ -654,18 +654,18 @@ input:focus, textarea:focus, select:focus {
     max-width: 100% !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 18mm 18mm 22mm 18mm !important;
+    padding: 6mm 6mm 10mm 6mm !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .dossier-section {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    margin-bottom: 22px !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    margin-bottom: 16px !important;
     background: #eedec8 !important;
     border: 1px solid #bda17a !important;
-    padding: 14px 18px !important;
+    padding: 12px 14px !important;
     border-radius: 4px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -676,15 +676,62 @@ input:focus, textarea:focus, select:focus {
     page-break-after: avoid !important;
   }
 
+  .bureau-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    margin: 8px 0 !important;
+    font-size: 10px !important;
+  }
+
+  .bureau-table tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .bureau-table th, .bureau-table td {
+    padding: 5px 8px !important;
+    border: 1px solid #aa8961 !important;
+    line-height: 1.35 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .bureau-signatures {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    display: block !important;
+    width: 100% !important;
+    margin-top: 20px !important;
+    padding-top: 12px !important;
+    border-top: 2px solid #7a5433 !important;
+    clear: both !important;
+  }
+
+  .bureau-signatures .sig-left {
+    display: inline-block !important;
+    width: 58% !important;
+    vertical-align: top !important;
+    text-align: left !important;
+  }
+
+  .bureau-signatures .sig-right {
+    display: inline-block !important;
+    width: 40% !important;
+    vertical-align: top !important;
+    text-align: right !important;
+  }
+
   .printable-dossier * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .printable-dossier img {
-    max-width: 90px !important;
+    max-width: 80px !important;
     display: block !important;
-    margin: 0 auto 8px auto !important;
+    margin: 0 auto 6px auto !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

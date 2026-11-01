@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { bureauAudio } from '../utils/audio.js';
+import BureauContentRenderer from '../utils/bureauTextFormatter.jsx';
 import { 
   Play, Sparkles, Shield, Cpu, Microscope, Globe, 
   CheckCircle, ArrowRight, RefreshCw, FileText, Download 
@@ -452,8 +453,8 @@ export default function InvestigationLab({
                     </div>
                   </div>
 
-                  <div className="text-xs sm:text-[13px] leading-relaxed text-[#2d1b0f] font-elite whitespace-pre-wrap pl-1">
-                    {turn.message}
+                  <div className="text-xs sm:text-[13px] leading-relaxed text-[#2d1b0f] font-elite pl-1">
+                    <BureauContentRenderer content={turn.message} />
                   </div>
                 </div>
               );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { kokoroVoiceEngine } from '../utils/kokoroVoiceEngine.js';
 import { bureauAudio } from '../utils/audio.js';
+import { cleanSpokenText, cleanPresentationText } from '../utils/bureauTextFormatter.jsx';
 import { 
   RotateCcw, ChevronLeft, ChevronRight, 
   X, Volume2, Shield, Award, CheckCircle2,
@@ -120,14 +121,16 @@ export default function CasePresentationModal({
     return typeof officer.defaultText === 'function' ? officer.defaultText(caseTitle, clues?.length || 0) : '';
   };
 
-  const currentText = getSpeechText(activeOfficer);
+  const currentRawText = getSpeechText(activeOfficer);
+  const spokenText = cleanSpokenText(currentRawText);
+  const displayText = cleanPresentationText(currentRawText);
 
   // Trigger speech when step changes
   useEffect(() => {
     clearAdvanceTimer();
     bureauAudio.typewriterClick();
 
-    kokoroVoiceEngine.speak(activeOfficer.id, currentText, {
+    kokoroVoiceEngine.speak(activeOfficer.id, spokenText, {
       onStart: () => setIsSpeaking(true),
       onEnd: () => {
         setIsSpeaking(false);
@@ -190,7 +193,7 @@ export default function CasePresentationModal({
     kokoroVoiceEngine.stop();
     bureauAudio.cameraShutter();
 
-    kokoroVoiceEngine.speak(activeOfficer.id, currentText, {
+    kokoroVoiceEngine.speak(activeOfficer.id, spokenText, {
       onStart: () => setIsSpeaking(true),
       onEnd: () => {
         setIsSpeaking(false);
@@ -335,7 +338,7 @@ export default function CasePresentationModal({
 
                   {/* Testimony Body Text in Typewriter Style */}
                   <div className="text-sm sm:text-base font-elite font-normal leading-relaxed text-[#23150c] whitespace-pre-wrap max-h-[220px] overflow-y-auto pr-2 scrollbar-thin">
-                    "{currentText}"
+                    "{displayText}"
                   </div>
                 </div>
 

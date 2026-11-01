@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { bureauAudio } from '../utils/audio.js';
+import BureauContentRenderer from '../utils/bureauTextFormatter.jsx';
 import { 
   FileText, Download, Printer, Copy, Check, 
   ShieldAlert, Archive, RefreshCw, CheckCircle2, Award, ChevronRight 
@@ -287,9 +288,7 @@ export default function ReportsView({
                       INTAKE DOSSIER
                     </span>
                   </div>
-                  <p className="leading-relaxed whitespace-pre-wrap">
-                    {sections.summary}
-                  </p>
+                  <BureauContentRenderer content={sections.summary} />
                 </div>
               )}
 
@@ -305,9 +304,7 @@ export default function ReportsView({
                       CRYPTOGRAPHIC & PHYSICAL FORENSICS
                     </span>
                   </div>
-                  <div className="leading-relaxed whitespace-pre-wrap">
-                    {sections.lutkin}
-                  </div>
+                  <BureauContentRenderer content={sections.lutkin} />
                 </div>
               )}
 
@@ -323,9 +320,7 @@ export default function ReportsView({
                       OSINT & TRANSIT CORRIDORS
                     </span>
                   </div>
-                  <div className="leading-relaxed whitespace-pre-wrap">
-                    {sections.vanguard}
-                  </div>
+                  <BureauContentRenderer content={sections.vanguard} />
                 </div>
               )}
 
@@ -341,9 +336,7 @@ export default function ReportsView({
                       PROBABILITY & ANOMALY MATRIX
                     </span>
                   </div>
-                  <div className="leading-relaxed whitespace-pre-wrap">
-                    {sections.cortex}
-                  </div>
+                  <BureauContentRenderer content={sections.cortex} />
                 </div>
               )}
 
@@ -359,9 +352,7 @@ export default function ReportsView({
                       DEPUTY CROSS-EXAMINATION
                     </span>
                   </div>
-                  <div className="leading-relaxed whitespace-pre-wrap">
-                    {sections.apex}
-                  </div>
+                  <BureauContentRenderer content={sections.apex} />
                 </div>
               )}
 
@@ -377,27 +368,23 @@ export default function ReportsView({
                       CULPRIT UNMASKED · FINAL VERDICT
                     </span>
                   </div>
-                  <div className="leading-relaxed font-bold whitespace-pre-wrap">
-                    {sections.argus}
-                  </div>
+                  <BureauContentRenderer content={sections.argus} />
                 </div>
               )}
 
               {/* Fallback if sections were not parseable */}
               {!sections?.lutkin && !sections?.argus && (
-                <div className="whitespace-pre-wrap leading-relaxed">
-                  {activeReport.full_report_text}
-                </div>
+                <BureauContentRenderer content={activeReport.full_report_text} />
               )}
             </div>
 
             {/* Bureau Signatures & Stamp */}
-            <div className="mt-12 pt-6 border-t-2 border-[#7a5433] flex flex-wrap justify-between items-center text-[10px] text-[#735334]">
-              <div>
+            <div className="bureau-signatures mt-10 pt-5 border-t-2 border-[#7a5433] flex flex-wrap justify-between items-center text-[10px] text-[#735334]">
+              <div className="sig-left">
                 <p className="font-bold tracking-wider">CERTIFIED BY ARGUS AND CO. FORENSIC PROTOCOLS</p>
                 <p className="font-mono-code mt-0.5">AUTHENTICATION HASH: SHA-256 VERIFIED IMMUTABLE</p>
               </div>
-              <div className="text-right">
+              <div className="sig-right text-right">
                 <p className="font-rye text-base text-[#4d2f19]">Detective Argus</p>
                 <p className="font-bold tracking-wider">CHIEF INVESTIGATION OFFICER</p>
               </div>
