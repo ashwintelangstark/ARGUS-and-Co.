@@ -24,12 +24,12 @@ export default function Header({
   };
 
   const navItems = [
-    { id: 'headquarters', label: '⌂ Headquarters' },
-    { id: 'casefiles', label: '▤ Case Files' },
-    { id: 'lab', label: '⚒ Investigation Lab' },
-    { id: 'clues', label: '☍ Clues & Suspect Web' },
-    { id: 'reports', label: '▧ Reports Desk' },
-    { id: 'archives', label: '▣ Archives' }
+    { id: 'headquarters', label: 'Headquarters' },
+    { id: 'casefiles', label: 'Case Files' },
+    { id: 'lab', label: 'Investigation Lab' },
+    { id: 'clues', label: 'Clues & Suspect Web' },
+    { id: 'reports', label: 'Reports Desk' },
+    { id: 'archives', label: 'Archives' }
   ];
 
   return (

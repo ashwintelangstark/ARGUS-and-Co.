@@ -363,22 +363,56 @@ export function createRealisticCharacter(agentId, options = {}) {
 
   group.scale.setScalar(scale);
 
+  // Current sitting interpolation progress (0 = standing, 1 = fully seated)
+  let currentSitProgress = 0;
+
   // Animation Update Loop
-  group.update = function (time, mouseTarget = { x: 0, y: 0 }, isSpeaking = false, isWalking = false, walkCycle = 0) {
-    if (isWalking) {
+  group.update = function (time, mouseTarget = { x: 0, y: 0 }, isSpeaking = false, isWalking = false, walkCycle = 0, isSitting = false) {
+    const targetSit = isSitting ? 1.0 : 0.0;
+    currentSitProgress = THREE.MathUtils.lerp(currentSitProgress, targetSit, 0.08);
+
+    if (currentSitProgress > 0.05 && !isWalking) {
+      // Seated Posture at Detective Desk
+      const p = currentSitProgress;
+      const breath = Math.sin(time * 1.5) * 0.015;
+
+      // Lower torso to match chair height (seated Y drop)
+      body.position.y = THREE.MathUtils.lerp(breath, -0.46, p);
+      body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, 0, 0.1);
+      headGroup.position.y = 2.18 + body.position.y * 1.05;
+
+      // Bend legs 90 degrees forward to sit on chair seat
+      const sitLegAngle = -Math.PI / 2 + 0.08;
+      legLeft.rotation.x = THREE.MathUtils.lerp(0, sitLegAngle, p);
+      legRight.rotation.x = THREE.MathUtils.lerp(0, sitLegAngle, p);
+
+      // Arms resting on desk / typing on system keyboard
+      const typingLeft = Math.sin(time * 6.5) * 0.04;
+      const typingRight = Math.cos(time * 6.5) * 0.04;
+      armLeft.rotation.x = THREE.MathUtils.lerp(0, -Math.PI / 2.7 + typingLeft, p);
+      armRight.rotation.x = THREE.MathUtils.lerp(0, -Math.PI / 2.7 + typingRight, p);
+      armLeft.rotation.z = THREE.MathUtils.lerp(-0.16, -0.06, p);
+      armRight.rotation.z = THREE.MathUtils.lerp(0.16, 0.06, p);
+
+      // Halo ring stays flat on floor under chair
+      ring.position.y = 0.03;
+      outerRing.position.y = 0.025;
+    } else if (isWalking) {
       // Natural detective stride cadence
       const walkAngle = Math.sin(walkCycle * 7.5);
       legLeft.rotation.x = walkAngle * 0.48;
       legRight.rotation.x = -walkAngle * 0.48;
       armLeft.rotation.x = -walkAngle * 0.38;
       armRight.rotation.x = walkAngle * 0.38;
+      armLeft.rotation.z = -0.16;
+      armRight.rotation.z = 0.16;
 
       // Vertical step bob and slight roll
       body.position.y = Math.abs(Math.sin(walkCycle * 7.5)) * 0.04;
       body.rotation.z = Math.sin(walkCycle * 3.75) * 0.02;
       headGroup.position.y = 2.18 + body.position.y * 1.1;
     } else {
-      // Breathing at rest
+      // Standing Breathing at rest
       const breath = Math.sin(time * 1.3) * 0.02;
       body.position.y = breath;
       body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, 0, 0.1);
@@ -388,11 +422,14 @@ export function createRealisticCharacter(agentId, options = {}) {
       legRight.rotation.x = THREE.MathUtils.lerp(legRight.rotation.x, 0, 0.15);
       armLeft.rotation.x = THREE.MathUtils.lerp(armLeft.rotation.x, 0, 0.15);
       armRight.rotation.x = THREE.MathUtils.lerp(armRight.rotation.x, 0, 0.15);
+      armLeft.rotation.z = -0.16;
+      armRight.rotation.z = 0.16;
     }
 
-    // Head-tracking mouse cursor
+    // Head-tracking mouse cursor or looking toward screen if seated
+    const lookDownBias = isSitting ? -0.15 : 0;
     const targetRotY = THREE.MathUtils.clamp(mouseTarget.x * 0.38, -0.42, 0.42);
-    const targetRotX = THREE.MathUtils.clamp(-mouseTarget.y * 0.25, -0.22, 0.22);
+    const targetRotX = THREE.MathUtils.clamp(-mouseTarget.y * 0.25 + lookDownBias, -0.32, 0.22);
     headGroup.rotation.y = THREE.MathUtils.lerp(headGroup.rotation.y, targetRotY, 0.06);
     headGroup.rotation.x = THREE.MathUtils.lerp(headGroup.rotation.x, targetRotX, 0.06);
 

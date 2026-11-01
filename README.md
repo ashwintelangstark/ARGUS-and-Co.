@@ -1,149 +1,200 @@
-# ARGUS and Co. — Western Investigation Bureau
+<p align="center">
+  <img src="docs/images/logo.png" width="130" height="130" alt="ARGUS & Co. Western Investigation Bureau Logo" />
+</p>
 
-An AI-Agent-Powered Investigation Agency web application featuring ultra-realistic 3D character avatars, physical/digital evidence examination, autonomous multi-agent deliberations, and certified forensic dossiers.
+<h1 align="center">ARGUS & Co.</h1>
+<h3 align="center">Western Investigation Bureau · Frontier District · Est. 1891</h3>
 
-Built with **React + Vite**, **Node.js + Express**, **Secure Relational Bureau Vault**, **Three.js**, and **OpenRouter Free Tier Models**.
+<p align="center">
+  <strong>An Autonomous Multi-Agent AI Investigation Agency with Ultra-Realistic 3D Headquarters, Interactive Red Yarn Evidence Board, Voice-Acted Detective Presentations, and Certified Forensic Dossiers.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Web%20App-amber?style=flat-square" alt="Platform" />
+  <img src="https://img.shields.io/badge/Node-v22%2B-green?style=flat-square" alt="Node Engine" />
+  <img src="https://img.shields.io/badge/React-18-blue?style=flat-square" alt="React 18" />
+  <img src="https://img.shields.io/badge/Three.js-r160-orange?style=flat-square" alt="Three.js" />
+  <img src="https://img.shields.io/badge/AI_Engine-5--Officer_Multi--Agent-gold?style=flat-square" alt="Multi-Agent AI" />
+  <img src="https://img.shields.io/badge/Deployment-Vercel_Production-black?style=flat-square" alt="Vercel Ready" />
+</p>
 
 ---
 
-## ✦ System Architecture & Tech Stack
+## ✦ Overview
 
-| Layer | Technology | Description |
+**ARGUS & Co.** is a full-stack, narrative-driven AI investigation agency platform set in a stylized Western Frontier District. The agency operates via a synchronized team of **five specialized autonomous AI detective agents**. 
+
+Users submit complex criminal dossiers with physical and digital evidence (documents, surveillance logs, audio spectrograms, wire intercepts, binary data). The bureau's officers autonomously convene in a multi-stage **Bureau Conclave**, cross-examine leads, calculate probability matrices, construct an interactive **Red Yarn Clues & Suspect Web**, deliver voice-acted **Cinematic Case Presentations**, and compile certified **Executive Verdict Reports** ready for print-to-PDF export.
+
+---
+
+## ♜ The Bureau Officers & Character Roster
+
+<p align="center">
+  <img src="docs/images/characters_roster.png" width="850" alt="ARGUS & Co. 5 Detective Officers Roster" />
+</p>
+
+The Bureau relies on five distinct investigative disciplines. Each detective is modeled with specialized procedural 3D PBR geometry, tailored attire, and distinct investigative doctrines:
+
+| Officer | Designation | Division | Core Specialty |
+|---|---|---|---|
+| **Detective Argus** | Chief Investigation Officer | Executive Command | Case strategy synthesis, motive analysis, audits overlooked clues, and delivers the binding final verdict unmasking the culprit. |
+| **Detective Apex** | Deputy Investigation Officer | Adversarial Red-Team | Skeptical cross-examination, confirmation bias defense, alibi stress-testing, and challenging baseline assumptions. |
+| **Officer Lutkin** | Forensic Intelligence Officer | Digital & Physical Forensics | Cryptographic SHA-256 validation, audio spectrogram analysis, file register integrity, and chemical ink forgery chromatography. |
+| **Officer Vanguard** | Intelligence Operations Officer | OSINT & Field Recon | Public registries, transit manifests, wiretap intercepts, boundary coordinates, and syndicate entity reconnaissance. |
+| **Officer Cortex** | Analytical Intelligence Officer | Analytical Link Matrix | Probability matrices, temporal anomaly detection, mathematical Fourier analysis, and relational suspect graph clustering. |
+
+---
+
+## 🏛️ Comprehensive Application Features
+
+### 1. 3D Bureau Headquarters Scene
+
+<p align="center">
+  <img src="docs/images/screenshot_headquarters_3d.jpg" width="900" alt="3D Western Bureau Headquarters" />
+</p>
+
+* **Fully Enclosed 360° Detective Office**: Built in Three.js with aged oak floorboards, darkwood wainscoting, heavy timber ceiling cross-beams, transom windows, double bureau entrance doors, and suspended atmospheric dust particles.
+* **Bounded Camera Space**: OrbitControls and camera boundaries are strictly constrained within the interior room boundaries, allowing users to rotate 360 degrees smoothly in all directions without clipping through walls or ceiling.
+* **Autonomous Agent Free Roaming & Obstacle Avoidance**: Detectives patrol the office freely, inspect the case board, pace the aisles, and converse. Advanced path routing and physical collision repulsion guarantee agents navigate smoothly through corridors and **never pass through tables or desks**.
+* **Station at Desks & Dynamic Chair Adjustment**:
+  * With one click, order all agents to station at their assigned desks (or free them to roam).
+  * As a detective approaches their workstation, their **swivel chair smoothly slides back and adjusts** to welcome them.
+  * The detective sits down in a seated posture with arms resting forward on the keyboard and telegraph sender.
+* **Live Working CRT Computer Terminals**:
+  * Every desk—including the **Central Command Table** for Chief Argus—is equipped with a functioning CRT monitor system.
+  * Real-time animated canvas textures display cathode ray scanlines, glowing phosphor text, fluctuating telemetry streams, and dynamic oscilloscope waveforms tailored to each officer's discipline.
+* **Atmospheric Lighting Switch**: Toggle between bright daylight frontier lighting and atmospheric noir night mode with flickering desk candles and warm lantern glow.
+* **Interactive Central Corkboard**: Mounted medallion seal plaque, live case docket banner, evidence cards with live SHA-256 hashes, and red yarn threads. Clicking any pinned card zooms the camera in to inspect chain of custody.
+
+---
+
+### 2. Case Files & Evidence Vault
+
+* **Dossier Intake Desk**: Open new investigation files with title, priority tier (Routine, Urgent, High, Critical), category, lead officer, and operational intake notes.
+* **Multi-Format Evidence Depository**: Drop-zone supporting images (`JPG`, `PNG`), audio recordings, text documents (`PDF`, `DOC`, `TXT`), spreadsheets (`CSV`, `XLS`), and binary data (`DAT`, `LOG`).
+* **Cryptographic Chain of Custody**: Automatic generation of SHA-256 checksums upon file upload ensures tamper-proof forensic auditability.
+* **Active Bureau Dossier Ledger**:
+  * Real-time ledger displaying all active cases.
+  * **Edit Case Dossier**: In-place modal to modify case reference, title, priority, category, status, and lead investigator.
+  * **Work On/Off Toggle**: Activates a case for immediate analysis in the Investigation Lab.
+  * **Close & Archive**: Direct user-controlled action to mark solved cases and transfer them safely to the historical Archives.
+
+---
+
+### 3. Investigation Lab & Autonomous Bureau Conclave
+
+* **Autonomous 5-Officer Conclave**: Initiates a multi-agent sequential investigation streamed live via Server-Sent Events (SSE) with vintage typewriter sound effects:
+  1. *Officer Lutkin* inspects cryptographic hashes and forensic validity.
+  2. *Officer Vanguard* cross-checks wire intercepts and OSINT shipping manifests.
+  3. *Officer Cortex* calculates correlation probabilities and isolates temporal anomalies.
+  4. *Detective Apex* performs adversarial red-team review, stress-testing alternative suspects.
+  5. *Detective Argus* synthesizes all findings, audits overlooked clues, and renders the official verdict identifying the culprit.
+* **Conditional Forensic Deep Web Search**: If intake documents lack required telemetry, Lutkin and Vanguard execute targeted OSINT lookups to fill evidentiary gaps.
+* **Zero Model Leaks**: Displays pure bureau narrative intelligence without exposing internal AI model names.
+* **1-on-1 Character Biometric Studio**: Inspect any officer in 3D with Ultra-Realistic, 3D Wireframe, and Thermal Vision modes, and interrogate them directly via live chat.
+
+---
+
+### 4. Clues & Suspect Web (Investigation Board)
+
+* **Autonomous Red Yarn Flowchart**: Pinned suspect cards, verified evidence artifacts, crime scenes, and deduction nodes connected by dynamic red yarn strings.
+* **Exclusively Curated by Bureau AI**: The board is populated and updated autonomously by the 5 detective officers during their conclave deliberations, guaranteeing human-like forensic accuracy.
+* **Cinematic "Present the Case" Feature**:
+  * Click the **Present the Case** button to launch a sequential comic-book presentation modal.
+  * Each officer steps forward one by one (*Cortex → Vanguard → Lutkin → Apex → Chief Argus*).
+  * **Spoken Aloud**: Powered by Kokoro Voice Engine with unique voices, natural sentence cadence, and emotional delivery.
+  * Navigation controls allow seamless Next, Previous, and Voice Repeat operations.
+  * Concludes with Chief Argus summarizing the evidentiary threads and unmasking the perpetrator.
+
+---
+
+### 5. Classified Reports Desk & Findings
+
+<p align="center">
+  <img src="docs/images/screenshot_reports_desk.jpg" width="900" alt="Classified Bureau Reports Desk" />
+</p>
+
+* **Official Bureau Letterhead**: Features the authentic golden ARGUS & Co. frontier seal (`logo.png`) framed with a vintage gold border on authentic parchment paper.
+* **Publication-Grade Formatting**: Rendered using `BureauContentRenderer` to strip raw markdown asterisks, sanitize LaTeX symbols into plain English/Unicode, and format structured forensic tables.
+* **WYSIWYG Fill-to-Page PDF Export**: Click **Download PDF Report** to generate a clean, borderless, multi-page print document with correctly aligned SHA-256 certification and Chief Argus's signature block.
+* **Post-Conclave Actions**:
+  1. **End Case & Seal in Archives**: Finalizes the case, seals the dossier, and relocates it to the Archives tab.
+  2. **Re-Analyse Case (Alternative Approach)**: Re-convenes the 5 officers under a contrarian investigative vector, challenging initial assumptions to uncover deeper syndicate conspiracies.
+
+---
+
+### 6. Bureau Archives
+
+* Historical repository of all concluded, solved, and archived investigations.
+* Search and filter archived cases by reference number, title, or lead officer.
+* **Reopen Case Dossier**: Seamlessly returns an archived case to active duty in the Ledger for further investigation.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Purpose |
 |---|---|---|
-| **Frontend** | React 18, Vite 5, Tailwind CSS | Modular, responsive noir Western cyberpunk interface with typewriter sound effects and tactile paper/wood textures. |
-| **3D Engine** | Three.js (r160) | Ultra-realistic 3D Bureau Headquarters, animated avatars, subsurface scattering skin shaders, eye tracking, blinking, voice pulsing, and biometric inspection modes. |
-| **Backend** | Node.js (v24), Express | REST API, Server-Sent Events (SSE) streaming for real-time AI deliberations, and file upload processing with SHA-256 hash generation. |
-| **Database** | Embedded Relational Vault (WAL Mode) | Secure evidence ledger and relational storage with tables for cases, evidence custody, clues & red yarn graphs, officer deliberations, and certified reports. |
-| **AI Multi-Agent** | OpenRouter Free Models | 100% free models (`openrouter/free`, `google/gemma-4-31b-it:free`, `liquid/lfm-2.5-2.6b:free`, `nvidia/nemotron-3.5-lightning:free`, etc.) with automatic fallback. |
+| **Frontend** | React 18, Vite 5, Tailwind CSS | High-performance SPA with vintage Western Bureau aesthetics and typography (`Rye`, `Special Elite`). |
+| **3D Rendering** | Three.js (r160), OrbitControls | 360° enclosed headquarters, dynamic PBR lighting, working CRT canvas screens, procedural detective avatars, and smooth animations. |
+| **Voice Synthesis** | Web Audio API, Kokoro Voice Engine | Character-tailored speech synthesis with emotional cadence and natural pauses. |
+| **Sound Effects** | Procedural Web Audio API Synthesizer | Typewriter key clicks, telegraph beeps, camera shutters, biometric hums, and conclave chimes. |
+| **Backend** | Node.js (v22+), Express | REST API, SSE streaming, multi-agent orchestration, and secure file upload handling. |
+| **Evidence Vault** | Native Embedded Relational Database | Secure storage for cases, evidence custody, clues, deliberations, audit trails, and certified reports. |
+| **Multi-Agent AI** | OpenRouter Free Tier / Gemini API | Multi-disciplinary reasoning, OSINT search, and forensic deduction with automated fallback. |
 
 ---
 
-## ♜ The Bureau Officers & Character References
-
-All 5 investigators are built with 3D western bureau styling, distinct silhouettes, roles, and gender-tailored attire:
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                    ARGUS & CO. ROSTER                                  │
-├───────────────────┬───────────────────┬───────────────────┬───────────────────┬────────┤
-│ OFFICER LUTKIN    │ DETECTIVE APEX    │ DETECTIVE ARGUS   │ OFFICER VANGUARD  │ CORTEX │
-│ Forensics         │ Deputy Review     │ Chief Command     │ Field & OSINT     │ Pattern│
-└───────────────────┴───────────────────┴───────────────────┴───────────────────┴────────┘
-```
-
-1. **DETECTIVE ARGUS** — *Chief Investigation Officer*
-   - **Gender & Demeanor:** Male. Rugged, handsome, wavy disheveled hair, trimmed beard, tailored charcoal vest over white rolled-sleeve shirt, leather shoulder holster, tactical watch.
-   - **Investigative Doctrine:** Central leader synthesizing motives and physical evidence; delivers binding verdicts and executive operational directives.
-   - **Assigned Free Model:** `openrouter/free` (or `liquid/lfm-2.5-2.6b:free`)
-   - **Accent Color:** Amber / Gold (`#f59e0b`)
-
-2. **DETECTIVE APEX** — *Deputy Investigation Officer*
-   - **Gender & Demeanor:** Female. Raven wavy hair tied back loosely with face-framing tendrils, motorcycle leather jacket over maroon henley, brass bureau eagle badge on lapel, arms crossed.
-   - **Investigative Doctrine:** Relentless Devil's Advocate and red-teamer. Attacks confirmation bias, stress-tests working theories, and exposes defense loopholes.
-   - **Assigned Free Model:** `openrouter/free` (or `google/gemma-4-31b-it:free`)
-   - **Accent Color:** Royal Amethyst / Purple (`#a855f7`)
-
-3. **OFFICER LUTKIN** — *Forensic Intelligence Officer*
-   - **Gender & Demeanor:** Female. Dark hair in chic high bun, round wire-rimmed glasses, monitor headphones around neck, tactical pocket vest over crisp rolled-up shirt.
-   - **Investigative Doctrine:** Digital and physical forensics. Validates cryptographic file hashes, inspects audio waveforms, hex bytes, ink drying marks, and chronometer logs.
-   - **Assigned Free Model:** `openrouter/free` (or `google/gemma-4-26b-a4b-it:free`)
-   - **Accent Color:** Cyan / Neon Blue (`#00d2ff`)
-
-4. **OFFICER VANGUARD** — *Intelligence Operations Officer*
-   - **Gender & Demeanor:** Male. Athletic build, swept-back wavy dark hair, stubble, tactical button-down shirt, heavy leather shoulder harness straps.
-   - **Investigative Doctrine:** Field intelligence and OSINT. Tracks transit punch-cards, surveillance wires, corporate registrations, suspect movements, and choke points.
-   - **Assigned Free Model:** `openrouter/free` (or `nvidia/nemotron-3.5-lightning:free`)
-   - **Accent Color:** Tactical Orange (`#f97316`)
-
-5. **OFFICER CORTEX** — *Analytical Intelligence Officer*
-   - **Gender & Demeanor:** Male. Voluminous curly/wavy dark fringe, modern thin-rimmed rectangular glasses, black tactical shirt, sharp calculating eyes.
-   - **Investigative Doctrine:** Mathematical link graphs, harmonic frequencies, probability vectors, and spatial-temporal cluster anomalies.
-   - **Assigned Free Model:** `openrouter/free` (or `cohere/north-mini-code:free`)
-   - **Accent Color:** Cyber Mint / Emerald (`#10b981`)
-
----
-
-## ⚒ Bureau Application Views & Features
-
-### 1. ⌂ 3D Headquarters Scene
-- **Interactive 3D Western Bureau**: Rendered in Three.js with realistic aged oak floorboards, darkwood wainscoting, CRT monitors, brass fixtures, and suspended dust particles.
-- **Dynamic Time-of-Day Lighting Engine**: Automatically calculates the ambient and directional lighting based on real-world local time or manual selection:
-  - *Dawn (5am-8am)*: Pale rose-blue sky mist, soft morning window light, and warm kerosene lanterns.
-  - *Day (8am-5pm)*: Sharp golden frontier sunlight through high clerestory windows with PCF soft shadows.
-  - *Sunset (5pm-8pm)*: Fiery copper golden-hour atmosphere with dramatic long wall shadows.
-  - *Night (8pm-5am)*: Moody film noir palette with flickering desk candles and warm lantern glow pools.
-- **Interactive Central Corkboard**:
-  - Mounted Western Bureau medallion logo plaque (`favicon.png`) with brass bezel.
-  - Pinned Central Case Docket, forensic evidence cards (with live SHA-256 hashes), suspect profiles, and connected red yarn investigation strings.
-  - Interactive 3D raycasting: Clicking on any evidence card or suspect card smoothly zooms the camera in close and opens an Evidence Inspector dossier with full chain-of-custody verification.
-- **Gender-Tailored Detective Roster**: All 5 specialists feature custom procedural 3D PBR geometry reflecting their roles and silhouettes (custom dusters, Stetson hats, spectacles, deputy and sheriff badges, breathing and mouse gaze-tracking).
-- **Floating HUD & Ledger**: Positioned exactly as in the Western Bureau layout, featuring floating detective tags, bureau status indicators, and an interactive ledger.
-
-### 2. ▤ Case Files & Evidence Register
-- Dossier intake: Case Reference, Title, Priority, Category, and Intake Notes.
-- Drag & Drop Evidence Depository supporting `DOC`, `DOCX`, `XLS`, `CSV`, `JPG`, `PNG`, `PDF`, `TXT`, `DAT`, `LOG`.
-- Automatic SHA-256 cryptographic hash generation on upload for tamper-proof chain of custody.
-- Registered Case Dossiers ledger with priority indicators, file counts, and action buttons.
-
-### 3. ⚒ Investigation Lab (Autonomous Multi-Agent Conclave)
-- Select any registered case dossier to inspect evidence pieces, hashes, and forensic notes.
-- **Run Autonomous Bureau Conclave**: Launches a 5-stage sequential investigation where each officer speaks, analyzes, and challenges the case in real-time with live typewriter audio feedback.
-- Interactive officer cards linking directly to 1-on-1 interrogation mode.
-
-### 4. ☍ Clues & Suspect Web (Investigation Board)
-- Visual corkboard displaying suspect cards, evidence artifacts, crime scenes, and hypotheses.
-- Dynamic red yarn stringing tool allowing users to connect related clues together with pins.
-- Add, update, or remove clues directly on the board.
-
-### 5. ▧ Classified Reports Desk
-- Formal bureaucratic findings reports compiled by the Bureau AI Conclave.
-- Sections: Executive Summary, Forensic Assessment (Lutkin), OSINT Surveillance (Vanguard), Anomaly Detection (Cortex), Red-Team Scrutiny (Apex), and Chief Verdict & Directives (Argus).
-- Export capabilities: Copy to clipboard, Print / PDF preview, or Download as certified `.txt` dossier.
-
-### 6. ▣ Agency Archives & Audit Ledger
-- Searchable historical repository of past cases and evidence items.
-- Immutable Bureau Audit Trail logging every evidence registration, case creation, and conclave run with exact timestamps.
-
-### 7. 3D Biometric Character Studio & 1-on-1 Interrogation
-- Click on any officer in the 3D scene, roster, or workbench to open a dedicated 360° inspector.
-- Four distinct real-time shader modes:
-  - **Ultra-Realistic**: Studio 3-point film noir lighting with subsurface skin scattering.
-  - **Holographic Scan**: Animated horizontal scanlines and traveling biometric pulse.
-  - **3D Wireframe**: Displays raw polygonal facial geometry and illuminated neon vertices.
-  - **Thermal Spec**: False-color infrared heatmap simulating facial blood flow.
-- Direct 1-on-1 Interrogation chat where the user can question the officer; the 3D avatar moves its jaw and pulses its voice ring in real-time as it answers!
-
----
-
-## 🚀 Running the Application
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js v18+ (tested on Node v24)
-- OpenRouter API key configured in `.env` (already set up)
 
-### Quick Start (Server + UI on port 5001)
-```bash
-# 1. Start the application
-npm start
+* **Node.js**: `v22.0.0` or higher (`node -v`)
+* **npm**: `v10.0.0` or higher
 
-# 2. Open in your browser:
-# http://localhost:5001
-```
+### Installation
 
-### Development Mode (Concurrent Vite + Express API)
-```bash
-# Runs Express on :5001 and Vite Dev Server on :5173 with hot reload
-npm run dev
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ashwintelangstark/ARGUS-and-Co..git
+   cd ARGUS-and-Co.
+   ```
+
+2. **Install all dependencies:**
+   ```bash
+   npm run install:all
+   ```
+
+3. **Configure Environment Variables:**
+   Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   Add your OpenRouter or Gemini API keys in `.env` (optional free fallback is built-in).
+
+4. **Launch Development Servers:**
+   ```bash
+   npm run dev
+   ```
+   * Frontend: `http://localhost:5173`
+   * Backend API: `http://localhost:3000`
+
+5. **Production Build:**
+   ```bash
+   npm run build
+   ```
 
 ---
 
-## 🔒 Configuration & Environment (`.env`)
+## 🔒 Security & Privacy
 
-```ini
-PORT=5001
-FRONTEND_PORT=5173
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-OPENROUTER_DEFAULT_MODEL=openrouter/free
-```
+* **Strict Git Exclusions**: All `.env*` files are strictly git-ignored to protect secret keys.
+* **Serverless Compatibility**: On Vercel deployments, the database automatically mounts to `/tmp` with safe delete journal mode.
+* **Cryptographic Integrity**: All ingested evidence files are fingerprinted with SHA-256 checksums to preserve chain-of-custody authenticity.
 
+---
+
+## 📜 License
+
+Created for **ARGUS and Co. Western Investigation Bureau**. All rights reserved. Est. 1891.

@@ -28,21 +28,22 @@ export function buildRealisticHqScene(canvas, options = {}) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
 
-  // Camera setup
+  // Camera setup - positioned comfortably inside the room looking into bureau
   const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 100);
-  const baseCamPos = new THREE.Vector3(0, 8.5, 17);
-  const baseLookAt = new THREE.Vector3(0, 2.3, 0);
+  const baseCamPos = new THREE.Vector3(0, 5.8, 7.8);
+  const baseLookAt = new THREE.Vector3(0, 2.0, -0.4);
   camera.position.copy(baseCamPos);
   camera.lookAt(baseLookAt);
 
-  // OrbitControls
+  // OrbitControls - Bounded strictly inside the 3D room for 360-degree rotation
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.target.copy(baseLookAt);
-  controls.minDistance = 2.8;
-  controls.maxDistance = 28.0;
-  controls.maxPolarAngle = Math.PI / 2 + 0.02; // Don't clip below floor
+  controls.minDistance = 2.4;
+  controls.maxDistance = 11.5; // Keeps user strictly within the office walls
+  controls.minPolarAngle = 0.25; // Prevents clipping through ceiling
+  controls.maxPolarAngle = Math.PI / 2 - 0.06; // Prevents sinking under floor
   controls.enablePan = true;
 
   // ==========================================
@@ -211,11 +212,28 @@ export function buildRealisticHqScene(canvas, options = {}) {
     return o;
   }
 
-  // Room Architecture
-  box(scene, 24, 0.4, 22, floor, 0, -0.25, 0);
-  box(scene, 24, 8, 0.4, wall, 0, 3.8, -9);
-  box(scene, 0.4, 8, 22, wall, -12, 3.8, 0);
-  box(scene, 0.4, 8, 22, wall, 12, 3.8, 0);
+  // Room Architecture - 360-degree Enclosed Western Bureau Office
+  box(scene, 24, 0.4, 22, floor, 0, -0.25, 0);       // Floor
+  box(scene, 24, 8, 0.4, wall, 0, 3.8, -9);          // North Wall (Case Investigation Board)
+  box(scene, 0.4, 8, 22, wall, -12, 3.8, 0);         // West Wall (Clerestory & Evidence Lockers)
+  box(scene, 0.4, 8, 22, wall, 12, 3.8, 0);          // East Wall (Telegraph Desk & Archives)
+  box(scene, 24, 8, 0.4, wall, 0, 3.8, 9.8);         // South Entrance Wall (Enclosing 360 space)
+  box(scene, 24, 0.3, 22, darkwood, 0, 7.8, 0);      // Darkwood Coffered Ceiling
+
+  // South Entrance Wall: Frontier District Double Doors with Brass Hardware
+  box(scene, 4.4, 6.2, 0.15, darkwood, 0, 3.1, 9.6);
+  box(scene, 1.8, 2.4, 0.06, brass, -1.0, 4.2, 9.58);
+  box(scene, 1.8, 2.4, 0.06, brass, 1.0, 4.2, 9.58);
+  cyl(scene, 0.04, 0.04, 0.28, brass, -0.15, 3.2, 9.5);
+  cyl(scene, 0.04, 0.04, 0.28, brass, 0.15, 3.2, 9.5);
+
+  // Ceiling Heavy Timber Beams (Historic Western Architecture)
+  for (let z = -7; z <= 8; z += 3.5) {
+    box(scene, 24, 0.35, 0.45, darkwood, 0, 7.6, z);
+  }
+  for (let x = -8; x <= 8; x += 8) {
+    box(scene, 0.45, 0.35, 21, darkwood, x, 7.6, 0);
+  }
 
   // Floor Planks Grids
   for (let x = -10; x <= 10; x += 2) {
@@ -369,6 +387,204 @@ export function buildRealisticHqScene(canvas, options = {}) {
   }
 
   // Western Desks, CRT monitors, and Chairs
+  // ==========================================
+  // WORKING CRT TERMINAL SYSTEM BUILDER
+  // ==========================================
+  const activeTerminals = [];
+
+  function createWorkingTerminal(x, y, z, rotY, officerId, title, hexColor, accentHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 320;
+    const ctx = canvas.getContext('2d');
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+
+    const screenMaterial = new THREE.MeshStandardMaterial({
+      map: texture,
+      emissive: new THREE.Color(accentHex),
+      emissiveMap: texture,
+      emissiveIntensity: 0.95,
+      roughness: 0.22,
+      metalness: 0.15
+    });
+
+    // Terminal Monitor Chassis Group
+    const monitorGroup = new THREE.Group();
+    monitorGroup.position.set(x, y, z);
+    monitorGroup.rotation.y = rotY;
+
+    // Heavy Brass & Black Cast CRT Chassis
+    box(monitorGroup, 1.25, 0.9, 0.45, black, 0, 0.45, 0);
+    // Working Glowing Screen Face
+    const screenMesh = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.74, 0.04), screenMaterial);
+    screenMesh.position.set(0, 0.45, 0.23);
+    monitorGroup.add(screenMesh);
+    // Brass Bezel & Knurled Dials
+    box(monitorGroup, 1.26, 0.05, 0.46, brass, 0, 0.92, 0);
+    cyl(monitorGroup, 0.035, 0.035, 0.06, brass, 0.52, 0.15, 0.25);
+    cyl(monitorGroup, 0.035, 0.035, 0.06, brass, 0.44, 0.15, 0.25);
+    // Swivel Neck & Heavy Base
+    box(monitorGroup, 0.16, 0.4, 0.16, brass, 0, -0.15, 0);
+    box(monitorGroup, 0.65, 0.08, 0.42, brass, 0, -0.36, 0);
+    // Mechanical Keyboard on table in front of screen
+    box(monitorGroup, 0.85, 0.06, 0.35, darkwood, 0, -0.36, 0.52);
+    box(monitorGroup, 0.8, 0.03, 0.3, mat(0x1a1a1a), 0, -0.32, 0.52);
+    // Telegraph Sender Key
+    cyl(monitorGroup, 0.045, 0.045, 0.08, brass, 0.55, -0.34, 0.48);
+
+    scene.add(monitorGroup);
+
+    let frame = 0;
+    const terminalObj = {
+      officerId,
+      update: (time) => {
+        frame++;
+        if (frame % 2 !== 0) return; // 30fps screen refresh for top efficiency
+
+        // CRT Screen Background
+        ctx.fillStyle = '#080d0d';
+        ctx.fillRect(0, 0, 512, 320);
+
+        // Phosphor cathode glow
+        const grad = ctx.createRadialGradient(256, 160, 20, 256, 160, 260);
+        grad.addColorStop(0, hexColor + '1f');
+        grad.addColorStop(1, '#000000bb');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 320);
+
+        // CRT Raster scanlines
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+        for (let py = 0; py < 320; py += 4) {
+          ctx.fillRect(0, py, 512, 2);
+        }
+
+        // Top Header Banner
+        ctx.fillStyle = hexColor;
+        ctx.fillRect(16, 16, 480, 28);
+        ctx.fillStyle = '#080808';
+        ctx.font = 'bold 15px "Courier New", monospace';
+        ctx.fillText(`[ARGUS & CO.] · ${title}`, 26, 36);
+
+        const blink = Math.sin(time * 5.0) > 0 ? '● LIVE' : '○ LIVE';
+        ctx.fillText(blink, 416, 36);
+
+        // Monospace Telemetry Body
+        ctx.fillStyle = hexColor;
+        ctx.font = '13px "Courier New", monospace';
+        const lineY = (idx) => 72 + idx * 22;
+
+        if (officerId === 'ARGUS') {
+          ctx.fillText(`CHIEF EXECUTIVE DIRECTIVE: ACTIVE`, 24, lineY(0));
+          ctx.fillText(`BUREAU CONCLAVE: 5 AGENTS SYNCHRONIZED`, 24, lineY(1));
+          ctx.fillText(`DIRECTIVE: SYNTHESIZING VERDICT & CULPRIT`, 24, lineY(2));
+          ctx.fillText(`COMMAND STATUS: EVIDENCE VAULT SEALED`, 24, lineY(3));
+        } else if (officerId === 'LUTKIN') {
+          ctx.fillText(`CRYPTOGRAPHIC REGISTER INTEGRITY: OK`, 24, lineY(0));
+          ctx.fillText(`SHA-256: 7f83b165... VERIFIED IMMUTABLE`, 24, lineY(1));
+          ctx.fillText(`SPECTROGRAM: 14.4 kHz CARRIER DETECTED`, 24, lineY(2));
+          ctx.fillText(`CHEMICAL INK CHROMATOGRAPHY: FORGERY`, 24, lineY(3));
+        } else if (officerId === 'CORTEX') {
+          ctx.fillText(`PROBABILITY MATRIX: 94.2% CORRELATION`, 24, lineY(0));
+          ctx.fillText(`TEMPORAL CLUSTERS: 02:40 AM SPIKE`, 24, lineY(1));
+          ctx.fillText(`EIGENVECTOR ANOMALY: NON-RANDOM PATTERN`, 24, lineY(2));
+          ctx.fillText(`RELATIONAL GRAPH: 12 EDGES LOCKED`, 24, lineY(3));
+        } else if (officerId === 'VANGUARD') {
+          ctx.fillText(`TRANSIT MANIFEST: CARGO #9923 UNMARKED`, 24, lineY(0));
+          ctx.fillText(`WIRE INTERCEPT: PACKET DETECTED AT GATE`, 24, lineY(1));
+          ctx.fillText(`OSINT RADAR: DISTRICT BOUNDARY MONITORED`, 24, lineY(2));
+          ctx.fillText(`LOGISTICS TRACE: CIPHER CORRIDOR ACTIVE`, 24, lineY(3));
+        } else if (officerId === 'APEX') {
+          ctx.fillText(`ADVERSARIAL RED-TEAM AUDIT: IN PROGRESS`, 24, lineY(0));
+          ctx.fillText(`STRESS-TEST: NIGHT PATROL ALIBI FAILED`, 24, lineY(1));
+          ctx.fillText(`HYPOTHESIS DEFENSE: INSIDE JOB PROVEN`, 24, lineY(2));
+          ctx.fillText(`CONFIRMATION BIAS DEFENSE: 100% OK`, 24, lineY(3));
+        }
+
+        // Live Oscilloscope Waveform
+        ctx.strokeStyle = hexColor;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        const waveBaseY = 220;
+        for (let px = 24; px < 488; px += 4) {
+          const freq = (px * 0.05) + time * 3.5;
+          const waveY = waveBaseY + Math.sin(freq) * 16 + Math.cos(freq * 1.8) * 8;
+          if (px === 24) ctx.moveTo(px, waveY);
+          else ctx.lineTo(px, waveY);
+        }
+        ctx.stroke();
+
+        // Telemetry Data Bar
+        ctx.fillStyle = hexColor + '33';
+        ctx.fillRect(24, 252, 464, 18);
+        const barW = ((Math.sin(time * 1.5) + 1) / 2) * 464;
+        ctx.fillStyle = hexColor;
+        ctx.fillRect(24, 252, barW, 18);
+
+        // Blinking Prompt
+        const cur = Math.sin(time * 6.0) > 0 ? '_' : ' ';
+        ctx.fillText(`BUREAU-V7.1> TELEMETRY_STREAM_OK ${cur}`, 24, 298);
+
+        texture.needsUpdate = true;
+      }
+    };
+
+    activeTerminals.push(terminalObj);
+    return monitorGroup;
+  }
+
+  // ==========================================
+  // ADJUSTABLE DESK CHAIR BUILDER
+  // ==========================================
+  function createAdjustableChair(homeX, homeY, homeZ, homeRotY, deskZ) {
+    const chairGroup = new THREE.Group();
+    chairGroup.position.set(homeX, homeY, homeZ);
+    chairGroup.rotation.y = homeRotY;
+
+    // Swivel Seat & Brass Base
+    cyl(chairGroup, 0.55, 0.55, 0.12, darkwood, 0, 0.65, 0);
+    cyl(chairGroup, 0.08, 0.08, 0.75, brass, 0, 0.27, 0);
+    // 5-Star Caster Brass Spindles
+    for (let a = 0; a < 5; a++) {
+      const angle = (a / 5) * Math.PI * 2;
+      const leg = box(chairGroup, 0.42, 0.04, 0.06, brass, Math.cos(angle) * 0.22, 0.08, Math.sin(angle) * 0.22);
+      leg.rotation.y = angle;
+    }
+    // High-Back Ergonomic Wooden/Brass Backrest
+    box(chairGroup, 0.9, 0.95, 0.12, darkwood, 0, 1.25, -0.38);
+    // Padded Armrests
+    box(chairGroup, 0.12, 0.06, 0.55, darkwood, -0.42, 0.95, -0.05);
+    box(chairGroup, 0.12, 0.06, 0.55, darkwood, 0.42, 0.95, -0.05);
+
+    scene.add(chairGroup);
+
+    return {
+      group: chairGroup,
+      homePos: new THREE.Vector3(homeX, homeY, homeZ),
+      homeRotY,
+      currentSlide: 0.2, // 0 = tucked under desk, 1 = pulled back to sit
+      update: (isSeated, isApproaching, dt) => {
+        // When approaching desk to station: chair pulls back smoothly (adjusting out)
+        // When seated: chair tucks neatly under desk
+        // When free roaming: chair sits relaxed
+        let targetSlide = 0.2;
+        let targetRot = homeRotY;
+
+        if (isSeated) {
+          targetSlide = 0.0; // tucked under desk
+          targetRot = homeRotY;
+        } else if (isApproaching) {
+          targetSlide = 0.55; // pulled back to allow detective to step in
+          targetRot = homeRotY + 0.18; // slight welcoming swivel
+        }
+
+        chairGroup.position.z = THREE.MathUtils.lerp(chairGroup.position.z, homeZ + (targetSlide * (homeZ > deskZ ? 0.6 : -0.6)), 0.08);
+        chairGroup.rotation.y = THREE.MathUtils.lerp(chairGroup.rotation.y, targetRot, 0.08);
+      }
+    };
+  }
+
   function desk(x, z, w = 3) {
     box(scene, w, 0.2, 1.5, wood, x, 1, z);
     for (const dx of [-w / 2 + 0.15, w / 2 - 0.15]) {
@@ -379,36 +595,44 @@ export function buildRealisticHqScene(canvas, options = {}) {
     box(scene, 1.1, 0.06, 0.7, darkwood, x, 0.16, z);
   }
 
-  function monitor(x, z) {
-    box(scene, 1.15, 0.8, 0.12, black, x, 2, z);
-    box(scene, 1.02, 0.65, 0.03, screen, x, 2, z + 0.08);
-    box(scene, 0.12, 0.35, 0.12, brass, x, 1.42, z);
-    box(scene, 0.55, 0.06, 0.3, brass, x, 1.23, z);
-  }
+  // 1. Officer Lutkin Desk (Left North): Forensics Desk with Working Cyan Terminal & Chair
+  desk(-7, -1);
+  createWorkingTerminal(-7, 1.48, -1.2, 0, 'LUTKIN', 'OFFICER LUTKIN · FORENSIC INTEL', '#00e5ff', 0x00e5ff);
+  const chairLutkin = createAdjustableChair(-7, 0, 0.18, Math.PI, -1);
 
-  function chair(x, z) {
-    cyl(scene, 0.55, 0.55, 0.12, darkwood, x, 0.65, z);
-    cyl(scene, 0.08, 0.08, 0.75, brass, x, 0.27, z);
-    box(scene, 0.9, 1, 0.18, darkwood, x, 1.25, z - 0.4);
-  }
+  // 2. Officer Cortex Desk (Right North): Analytics Desk with Working Emerald Terminal & Chair
+  desk(7, -1);
+  createWorkingTerminal(7, 1.48, -1.2, 0, 'CORTEX', 'OFFICER CORTEX · ANALYTICAL MATRIX', '#2ecc71', 0x2ecc71);
+  const chairCortex = createAdjustableChair(7, 0, 0.18, Math.PI, -1);
 
-  desk(-7, -1); monitor(-7, -1.2); chair(-7, 1);
-  desk(7, -1); monitor(7, -1.2); chair(7, 1);
-  desk(-7, 4, 2.7); monitor(-7, 3.8); chair(-7, 6);
-  desk(7, 4, 2.7); monitor(7, 3.8); chair(7, 6);
+  // 3. Detective Apex Desk (Left South): Deputy Audit Desk with Working Amethyst Terminal & Chair
+  desk(-7, 4, 2.7);
+  createWorkingTerminal(-7, 1.48, 3.8, 0, 'APEX', 'DETECTIVE APEX · RED-TEAM AUDIT', '#c084fc', 0xc084fc);
+  const chairApex = createAdjustableChair(-7, 0, 5.18, Math.PI, 4);
 
-  // Central briefing table
+  // 4. Officer Vanguard Desk (Right South): OSINT Intel Desk with Working Orange Terminal & Chair
+  desk(7, 4, 2.7);
+  createWorkingTerminal(7, 1.48, 3.8, 0, 'VANGUARD', 'OFFICER VANGUARD · FIELD & OSINT', '#fb923c', 0xfb923c);
+  const chairVanguard = createAdjustableChair(7, 0, 5.18, Math.PI, 4);
+
+  // 5. Central Briefing Table (with Chief Argus's Command System & Adjustable Executive Chair)
   box(scene, 5.4, 0.22, 2.8, wood, 0, 1.15, 2.1);
   for (const x of [-2.35, 2.35]) {
     for (const z of [1.1, 3.1]) {
       box(scene, 0.15, 1, 0.15, brass, x, 0.55, z);
     }
   }
-  for (const x of [-3.5, 3.5]) {
-    for (const z of [1.4, 3.2]) {
-      chair(x, z);
-    }
-  }
+  // Chief Argus Command Terminal on Central Table (Facing South towards Argus)
+  createWorkingTerminal(0, 1.62, 2.3, 0, 'ARGUS', 'DETECTIVE ARGUS · BUREAU COMMAND', '#f59e0b', 0xf59e0b);
+  const chairArgus = createAdjustableChair(0, 0, 3.35, Math.PI, 2.1);
+
+  const officerChairs = {
+    ARGUS: chairArgus,
+    APEX: chairApex,
+    LUTKIN: chairLutkin,
+    VANGUARD: chairVanguard,
+    CORTEX: chairCortex
+  };
 
   // Western wall decor: Beams, lanterns, wanted poster frames, CRT terminals
   for (const x of [-8, 0, 8]) {
@@ -425,34 +649,39 @@ export function buildRealisticHqScene(canvas, options = {}) {
   }
 
   // ==========================================
-  // THE 5 GENDER-TAILORED DETECTIVES
+  // THE 5 GENDER-TAILORED DETECTIVES (STATIONS & POSTURES)
   // ==========================================
   const agents = [
-    { name: 'ARGUS', x: 0, z: 3.6, rotY: 0, scale: 1.08, gender: 'Male', role: 'Chief Investigation Officer' },
-    { name: 'APEX', x: -4.5, z: -0.4, rotY: Math.PI / 4, scale: 1.0, gender: 'Female', role: 'Deputy Investigation Officer' },
-    { name: 'LUTKIN', x: -8.2, z: 2.5, rotY: 0, scale: 0.94, gender: 'Female', role: 'Forensic Intelligence Officer' },
-    { name: 'VANGUARD', x: 4.5, z: -0.4, rotY: -Math.PI / 4, scale: 1.04, gender: 'Male', role: 'Intelligence Operations Officer' },
-    { name: 'CORTEX', x: 8.2, z: 2.5, rotY: 0, scale: 0.95, gender: 'Male', role: 'Analytical Intelligence Officer' }
+    { name: 'ARGUS', x: 0, z: 3.35, rotY: Math.PI, scale: 1.08, gender: 'Male', role: 'Chief Investigation Officer' },
+    { name: 'APEX', x: -7, z: 5.18, rotY: Math.PI, scale: 1.0, gender: 'Female', role: 'Deputy Investigation Officer' },
+    { name: 'LUTKIN', x: -7, z: 0.18, rotY: Math.PI, scale: 0.94, gender: 'Female', role: 'Forensic Intelligence Officer' },
+    { name: 'VANGUARD', x: 7, z: 5.18, rotY: Math.PI, scale: 1.04, gender: 'Male', role: 'Intelligence Operations Officer' },
+    { name: 'CORTEX', x: 7, z: 0.18, rotY: Math.PI, scale: 0.95, gender: 'Male', role: 'Analytical Intelligence Officer' }
   ];
 
-  // Points of Interest (POIs) across the Western Bureau Office for Free Roaming
+  // Open Corridor Waypoints (Strictly Avoiding All Tables and Desks)
   const officeWaypoints = [
-    // Case Board Inspection
+    // Case Board Inspection (North Aisle)
     { x: -2.8, z: -5.8, rotY: Math.PI },
-    { x: 0.0, z: -6.0, rotY: Math.PI },
+    { x: 0.0, z: -5.8, rotY: Math.PI },
     { x: 2.8, z: -5.8, rotY: Math.PI },
-    // Briefing Table Discussions
-    { x: -3.2, z: 1.8, rotY: Math.PI / 2 },
-    { x: 3.2, z: 2.0, rotY: -Math.PI / 2 },
-    { x: 0.0, z: 0.5, rotY: 0 },
-    // Aisle & Floor Pacing
-    { x: -2.0, z: -2.5, rotY: Math.PI * 0.7 },
-    { x: 2.0, z: -2.5, rotY: Math.PI * 1.3 },
-    { x: -1.5, z: 5.5, rotY: 0 },
-    { x: 1.5, z: 5.5, rotY: 0 },
-    // Clerestory Window & Archives
-    { x: -9.5, z: -3.8, rotY: Math.PI / 4 },
-    { x: 9.5, z: -3.8, rotY: -Math.PI / 4 }
+    // Left Open Corridor (Between Left Desks and Central Table)
+    { x: -3.8, z: -2.2, rotY: 0 },
+    { x: -3.8, z: 0.8, rotY: 0 },
+    { x: -3.8, z: 2.4, rotY: Math.PI / 2 },
+    { x: -3.8, z: 4.2, rotY: 0 },
+    // Right Open Corridor (Between Right Desks and Central Table)
+    { x: 3.8, z: -2.2, rotY: 0 },
+    { x: 3.8, z: 0.8, rotY: 0 },
+    { x: 3.8, z: 2.4, rotY: -Math.PI / 2 },
+    { x: 3.8, z: 4.2, rotY: 0 },
+    // South Open Corridor (Behind Central Table)
+    { x: -2.2, z: 6.2, rotY: 0 },
+    { x: 0.0, z: 6.2, rotY: 0 },
+    { x: 2.2, z: 6.2, rotY: 0 },
+    // Clerestory & Archives Corners
+    { x: -10.2, z: -4.5, rotY: Math.PI / 4 },
+    { x: 10.2, z: -4.5, rotY: -Math.PI / 4 }
   ];
 
   let isFreeMode = true; // Agents move freely by default until assigned work
@@ -559,15 +788,34 @@ export function buildRealisticHqScene(canvas, options = {}) {
     const dt = Math.min(clock.getDelta(), 0.1);
     const t = clock.getElapsedTime();
 
-    // 1. Autonomous Detective Movement & Animation
+    // 1. Update Live Working Computer Terminals (Glowing animated CRT telemetry)
+    activeTerminals.forEach(term => term.update(t));
+
+    // 2. Autonomous Detective Movement, Obstacle Avoidance & Stationing
     figures.forEach(f => {
       const isSpeaking = (f.name === activeSpeakerName);
+      const officerChair = officerChairs[f.name];
+      const distToDesk = Math.hypot(f.homePos.x - f.currentPos.x, f.homePos.z - f.currentPos.z);
 
       if (isFreeMode && !f.isAssignedWork) {
-        // Free Roaming Mode: stroll around bureau, inspect board, pace floor
+        // Agent is free to roam: standing posture
+        f.isSitting = false;
+        if (officerChair) officerChair.update(false, false, dt);
+
         if (f.state === 'walking') {
-          const dx = f.targetPos.x - f.currentPos.x;
-          const dz = f.targetPos.z - f.currentPos.z;
+          // Route through intermediate corridor waypoint if path crosses central table
+          let dest = f.targetPos;
+          if (f.intermediatePos) {
+            const distToInter = Math.hypot(f.intermediatePos.x - f.currentPos.x, f.intermediatePos.z - f.currentPos.z);
+            if (distToInter > 0.35) {
+              dest = f.intermediatePos;
+            } else {
+              f.intermediatePos = null;
+            }
+          }
+
+          const dx = dest.x - f.currentPos.x;
+          const dz = dest.z - f.currentPos.z;
           const dist = Math.hypot(dx, dz);
 
           if (dist > 0.15) {
@@ -578,44 +826,53 @@ export function buildRealisticHqScene(canvas, options = {}) {
             while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
             f.group.rotation.y += diffAngle * 0.08;
 
-            // Advance position
+            // Advance position along corridor
             const step = Math.min(f.speed * dt, dist);
             f.currentPos.x += (dx / dist) * step;
             f.currentPos.z += (dz / dist) * step;
+
+            // Physical repulsion from central briefing table (NEVER pass through table)
+            if (f.currentPos.x > -2.85 && f.currentPos.x < 2.85 && f.currentPos.z > 0.65 && f.currentPos.z < 3.55) {
+              f.currentPos.x = f.currentPos.x < 0 ? -3.05 : 3.05;
+            }
+
             f.group.position.x = f.currentPos.x;
             f.group.position.z = f.currentPos.z;
 
             f.walkCycle += dt;
             if (f.group.update) {
-              f.group.update(t, mouse, isSpeaking, true, f.walkCycle);
+              f.group.update(t, mouse, isSpeaking, true, f.walkCycle, false);
             }
           } else {
-            // Arrived at destination point
+            // Arrived at destination waypoint
             f.state = 'idle';
-            f.idleTimer = 4.5 + Math.random() * 6.0; // inspect for 4.5 - 10.5 seconds
+            f.idleTimer = 4.5 + Math.random() * 6.0;
             if (f.group.update) {
-              f.group.update(t, mouse, isSpeaking, false, 0);
+              f.group.update(t, mouse, isSpeaking, false, 0, false);
             }
           }
         } else {
-          // Idle / inspecting
+          // Idle / inspecting board or documents
           f.group.rotation.y = THREE.MathUtils.lerp(f.group.rotation.y, f.targetRotY, 0.05);
           if (f.group.update) {
-            f.group.update(t, mouse, isSpeaking, false, 0);
+            f.group.update(t, mouse, isSpeaking, false, 0, false);
           }
 
           f.idleTimer -= dt;
           if (f.idleTimer <= 0) {
-            // Pick next destination distinct from current location
+            // Pick next destination in open corridors
             const candidateWaypoints = officeWaypoints.filter(wp =>
               Math.hypot(wp.x - f.currentPos.x, wp.z - f.currentPos.z) > 2.5
             );
-            // 20% chance to also walk back to their desk for a quick check
-            let nextWp;
-            if (Math.random() < 0.22) {
-              nextWp = { x: f.homePos.x, z: f.homePos.z, rotY: f.homeRotY };
+            const nextWp = candidateWaypoints[Math.floor(Math.random() * candidateWaypoints.length)] || officeWaypoints[0];
+
+            // If crossing the central table, insert intermediate corridor waypoint
+            const crossesCenter = (f.currentPos.z < 0.65 && nextWp.z > 3.55) || (f.currentPos.z > 3.55 && nextWp.z < 0.65);
+            if (crossesCenter) {
+              const aisleX = (f.currentPos.x <= 0 && nextWp.x <= 0) ? -3.8 : 3.8;
+              f.intermediatePos = new THREE.Vector3(aisleX, 0, 2.1);
             } else {
-              nextWp = candidateWaypoints[Math.floor(Math.random() * candidateWaypoints.length)] || officeWaypoints[0];
+              f.intermediatePos = null;
             }
 
             f.targetPos.set(nextWp.x, 0, nextWp.z);
@@ -625,12 +882,40 @@ export function buildRealisticHqScene(canvas, options = {}) {
         }
       } else {
         // Stationed at Assigned Work Desk
-        const dx = f.homePos.x - f.currentPos.x;
-        const dz = f.homePos.z - f.currentPos.z;
-        const dist = Math.hypot(dx, dz);
+        const isApproachingDesk = distToDesk < 1.8 && distToDesk > 0.15;
+        const isAtDesk = distToDesk <= 0.15;
 
-        if (dist > 0.15) {
-          // Walk back to desk
+        // Animate chair adjusting and pulling in/out
+        if (officerChair) {
+          officerChair.update(isAtDesk, isApproachingDesk, dt);
+        }
+
+        if (!isAtDesk) {
+          f.isSitting = false;
+
+          // Route around central table if returning to station
+          let dest = f.homePos;
+          if (f.intermediatePos) {
+            const distToInter = Math.hypot(f.intermediatePos.x - f.currentPos.x, f.intermediatePos.z - f.currentPos.z);
+            if (distToInter > 0.35) {
+              dest = f.intermediatePos;
+            } else {
+              f.intermediatePos = null;
+            }
+          } else {
+            const crossesCenter = (f.currentPos.z < 0.65 && f.homePos.z > 3.55) || (f.currentPos.z > 3.55 && f.homePos.z < 0.65);
+            if (crossesCenter && Math.abs(f.homePos.x) > 2.0) {
+              const aisleX = f.homePos.x < 0 ? -3.8 : 3.8;
+              f.intermediatePos = new THREE.Vector3(aisleX, 0, 2.1);
+              dest = f.intermediatePos;
+            }
+          }
+
+          const dx = dest.x - f.currentPos.x;
+          const dz = dest.z - f.currentPos.z;
+          const dist = Math.hypot(dx, dz);
+
+          // Smoothly face walking direction
           const moveAngle = Math.atan2(dx, dz);
           let diffAngle = moveAngle - f.group.rotation.y;
           while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
@@ -640,24 +925,34 @@ export function buildRealisticHqScene(canvas, options = {}) {
           const step = Math.min(f.speed * dt, dist);
           f.currentPos.x += (dx / dist) * step;
           f.currentPos.z += (dz / dist) * step;
+
+          // Repel from central table
+          if (f.name !== 'ARGUS' && f.currentPos.x > -2.85 && f.currentPos.x < 2.85 && f.currentPos.z > 0.65 && f.currentPos.z < 3.55) {
+            f.currentPos.x = f.currentPos.x < 0 ? -3.05 : 3.05;
+          }
+
           f.group.position.x = f.currentPos.x;
           f.group.position.z = f.currentPos.z;
 
           f.walkCycle += dt;
           if (f.group.update) {
-            f.group.update(t, mouse, isSpeaking, true, f.walkCycle);
+            f.group.update(t, mouse, isSpeaking, true, f.walkCycle, false);
           }
         } else {
-          // Stationed at desk facing station angle
+          // Detective is at desk: seated in adjusted chair typing/analyzing live system screen
+          f.isSitting = true;
+          f.group.position.x = f.homePos.x;
+          f.group.position.z = f.homePos.z;
           f.group.rotation.y = THREE.MathUtils.lerp(f.group.rotation.y, f.homeRotY, 0.08);
+
           if (f.group.update) {
-            f.group.update(t, mouse, isSpeaking, false, 0);
+            f.group.update(t, mouse, isSpeaking, false, 0, true);
           }
         }
       }
     });
 
-    // 2. Project Agent Name & Designation Badges from 3D World to Screen Coordinates
+    // 3. Project Agent Name & Designation Badges from 3D World to Screen Coordinates
     const canvasRect = canvas.getBoundingClientRect();
     const cw = canvasRect.width;
     const ch = canvasRect.height;
@@ -667,7 +962,7 @@ export function buildRealisticHqScene(canvas, options = {}) {
       if (tagEl) {
         const tagWorld = new THREE.Vector3();
         f.group.getWorldPosition(tagWorld);
-        tagWorld.y += 2.45; // Directly above head and Stetson
+        tagWorld.y += (f.isSitting ? 1.85 : 2.45); // Adjust height when sitting
         tagWorld.project(camera);
 
         if (tagWorld.z < 1.0 && tagWorld.z > -1.0) {
@@ -693,6 +988,15 @@ export function buildRealisticHqScene(canvas, options = {}) {
         isTransitioning = false;
       }
     }
+
+    // Keep camera and controls target strictly inside the room for 360-degree rotation
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -10.8, 10.8);
+    camera.position.y = THREE.MathUtils.clamp(camera.position.y, 0.9, 7.0);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -8.0, 8.8);
+
+    controls.target.x = THREE.MathUtils.clamp(controls.target.x, -5.5, 5.5);
+    controls.target.y = THREE.MathUtils.clamp(controls.target.y, 0.9, 4.8);
+    controls.target.z = THREE.MathUtils.clamp(controls.target.z, -5.5, 5.0);
 
     controls.update();
     renderer.render(scene, camera);
