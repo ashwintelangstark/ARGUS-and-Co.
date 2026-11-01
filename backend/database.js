@@ -161,7 +161,10 @@ export function initDatabase() {
     db.exec(`ALTER TABLE cases ADD COLUMN conclave_count INTEGER DEFAULT 0;`);
   } catch (e) {}
 
-  seedDefaultData();
+  // Only seed dummy cases if explicitly requested via environment variable
+  if (process.env.SEED_DUMMY_CASES === 'true') {
+    seedDefaultData();
+  }
 }
 
 function seedDefaultData() {

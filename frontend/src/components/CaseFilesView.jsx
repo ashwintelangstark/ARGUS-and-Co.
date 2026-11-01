@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { bureauAudio } from '../utils/audio.js';
 import { 
   FolderPlus, UploadCloud, File, Trash2, ExternalLink, 
-  ShieldCheck, FileCheck, AlertTriangle, CheckCircle2 
+  ShieldCheck, FileCheck, AlertTriangle, CheckCircle2,
+  Edit3, Archive, X, Save
 } from 'lucide-react';
 
 export default function CaseFilesView({ 
@@ -20,6 +21,87 @@ export default function CaseFilesView({
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+
+  // Edit Case State
+  const [editingCase, setEditingCase] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editPriority, setEditPriority] = useState('High');
+  const [editCategory, setEditCategory] = useState('Classified Investigation');
+  const [editStatus, setEditStatus] = useState('Active');
+  const [editNotes, setEditNotes] = useState('');
+  const [editLeadOfficer, setEditLeadOfficer] = useState('ARGUS');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Open Edit Modal
+  const handleOpenEdit = (c) => {
+    bureauAudio.typewriterClick();
+    setEditingCase(c);
+    setEditTitle(c.title || '');
+    setEditPriority(c.priority || 'High');
+    setEditCategory(c.category || 'Classified Investigation');
+    setEditStatus(c.status || 'Active');
+    setEditNotes(c.notes || '');
+    setEditLeadOfficer(c.lead_officer || 'ARGUS');
+  };
+
+  // Save Case Edit
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingCase) return;
+    setIsSavingEdit(true);
+    bureauAudio.typewriterClick();
+
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(editingCase.case_ref)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle,
+          priority: editPriority,
+          category: editCategory,
+          status: editStatus,
+          notes: editNotes,
+          lead_officer: editLeadOfficer
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotification(`Dossier ${editingCase.case_ref} successfully updated.`);
+        setEditingCase(null);
+        if (typeof onRefresh === 'function') onRefresh();
+      } else {
+        alert(data.error || 'Failed to update case.');
+      }
+    } catch (err) {
+      console.error('Error saving case edit:', err);
+      alert('Failed to save changes.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Close and Archive Case (User-controlled action)
+  const handleArchiveCase = async (ref, caseTitle) => {
+    if (!confirm(`Are you certain you wish to close and archive Case ${ref}: "${caseTitle}"?\n\nThis will officially mark the case as Solved/Archived and move it to the Bureau Archives.`)) {
+      return;
+    }
+    bureauAudio.conclaveChime();
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(ref)}/archive`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotification(`Case ${ref} officially closed and archived.`);
+        if (typeof onRefresh === 'function') onRefresh();
+      } else {
+        alert(data.error || 'Failed to archive case.');
+      }
+    } catch (err) {
+      console.error('Failed to archive case:', err);
+      alert('Failed to archive case.');
+    }
+  };
 
   // File Handling
   const handleFileDrop = (e) => {
@@ -427,7 +509,7 @@ export default function CaseFilesView({
                       <td className="p-2.5 text-[#634830] text-[10px]">
                         {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Active'}
                       </td>
-                      <td className="p-2.5 text-right space-x-2">
+                      <td className="p-2.5 text-right space-x-1.5 whitespace-nowrap">
                         {/* Work On / Work Off button */}
                         <button
                           onClick={() => handleToggleWork(c.case_ref, isWorking)}
@@ -440,18 +522,43 @@ export default function CaseFilesView({
                         >
                           {isWorking ? '⚡ Work ON' : 'Work On'}
                         </button>
+
+                        {/* Open in Lab */}
                         <button
                           onClick={() => {
                             bureauAudio.telegraphBeep();
                             if (typeof onSelectCaseForLab === 'function') onSelectCaseForLab(c.case_ref);
                           }}
-                          className="western-btn px-2.5 py-1 text-[10px]"
+                          className="western-btn px-2 py-1 text-[10px]"
+                          title="Open case in Investigation Lab"
                         >
-                          ⚒ Open in Lab
+                          ⚒ Lab
                         </button>
+
+                        {/* Edit Case Button */}
+                        <button
+                          onClick={() => handleOpenEdit(c)}
+                          className="western-btn px-2 py-1 text-[10px] inline-flex items-center gap-1"
+                          title="Edit Case Details"
+                        >
+                          <Edit3 size={11} />
+                          <span>Edit</span>
+                        </button>
+
+                        {/* User-Controlled Close & Archive Case */}
+                        <button
+                          onClick={() => handleArchiveCase(c.case_ref, c.title)}
+                          className="px-2 py-1 text-[10px] font-bold rounded inline-flex items-center gap-1 bg-[#4a2e19] hover:bg-[#603a1f] text-[#ffdfa6] border border-[#8f663c] transition-all shadow-sm"
+                          title="Officially close this case and seal it in the permanent Bureau Archives"
+                        >
+                          <Archive size={11} className="text-[#e2b06e]" />
+                          <span>Close & Archive</span>
+                        </button>
+
+                        {/* Delete Case */}
                         <button
                           onClick={() => handleDeleteCase(c.case_ref)}
-                          className="p-1 text-red-800 hover:text-red-950 transition-colors"
+                          className="p-1 text-red-800 hover:text-red-950 transition-colors inline-block align-middle"
                           title="Delete Dossier"
                         >
                           <Trash2 size={13} />
@@ -474,6 +581,141 @@ export default function CaseFilesView({
         </div>
 
       </div>
+
+      {/* Edit Case Dossier Modal */}
+      {editingCase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#f5ecdb] text-[#24170f] rounded-lg border-2 border-[#8b653e] shadow-[0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden font-elite">
+            {/* Modal Header */}
+            <div className="px-4 py-3 bg-gradient-to-r from-[#2b170c] via-[#1c1008] to-[#2b170c] border-b-2 border-[#805a34] flex items-center justify-between text-[#f5deb3]">
+              <div className="flex items-center gap-2">
+                <Edit3 size={16} className="text-[#c69a50]" />
+                <h3 className="font-rye text-sm sm:text-base tracking-wide">
+                  Edit Bureau Dossier — {editingCase.case_ref}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingCase(null)}
+                className="text-[#d4af37] hover:text-white p-1"
+                title="Cancel Edit"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[#56371f] mb-1">
+                  CASE TITLE
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full p-2 bg-[#fdf8f0] border border-[#96744c] rounded text-xs font-elite text-[#24170f] focus:outline-none focus:border-[#4d2f19]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#56371f] mb-1">
+                    SECURITY PRIORITY
+                  </label>
+                  <select
+                    value={editPriority}
+                    onChange={(e) => setEditPriority(e.target.value)}
+                    className="w-full p-2 bg-[#fdf8f0] border border-[#96744c] rounded text-xs font-elite text-[#24170f] focus:outline-none focus:border-[#4d2f19]"
+                  >
+                    <option value="Critical">Critical Priority</option>
+                    <option value="High">High Priority</option>
+                    <option value="Medium">Medium Priority</option>
+                    <option value="Low">Routine Priority</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#56371f] mb-1">
+                    CASE STATUS
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full p-2 bg-[#fdf8f0] border border-[#96744c] rounded text-xs font-elite text-[#24170f] focus:outline-none focus:border-[#4d2f19]"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Under Deliberation">Under Deliberation</option>
+                    <option value="Solved">Solved</option>
+                    <option value="Archived">Archived</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#56371f] mb-1">
+                    INVESTIGATION CATEGORY
+                  </label>
+                  <input
+                    type="text"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full p-2 bg-[#fdf8f0] border border-[#96744c] rounded text-xs font-elite text-[#24170f] focus:outline-none focus:border-[#4d2f19]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#56371f] mb-1">
+                    LEAD OFFICER
+                  </label>
+                  <select
+                    value={editLeadOfficer}
+                    onChange={(e) => setEditLeadOfficer(e.target.value)}
+                    className="w-full p-2 bg-[#fdf8f0] border border-[#96744c] rounded text-xs font-elite text-[#24170f] focus:outline-none focus:border-[#4d2f19]"
+                  >
+                    <option value="ARGUS">Detective Argus (Chief)</option>
+                    <option value="APEX">Detective Apex (Deputy)</option>
+                    <option value="LUTKIN">Officer Lutkin (Forensics)</option>
+                    <option value="VANGUARD">Officer Vanguard (OSINT)</option>
+                    <option value="CORTEX">Officer Cortex (Analytics)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#56371f] mb-1">
+                  CASE NOTES / INTAKE SUMMARY
+                </label>
+                <textarea
+                  rows={3}
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full p-2 bg-[#fdf8f0] border border-[#96744c] rounded text-xs font-elite text-[#24170f] focus:outline-none focus:border-[#4d2f19]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#9c764e]/40">
+                <button
+                  type="button"
+                  onClick={() => setEditingCase(null)}
+                  className="western-btn px-4 py-1.5 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="western-btn-gold px-5 py-1.5 text-xs font-bold shadow flex items-center gap-1.5"
+                >
+                  <Save size={13} />
+                  <span>{isSavingEdit ? 'Saving Changes...' : 'Save Dossier Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

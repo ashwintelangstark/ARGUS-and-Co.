@@ -148,6 +148,44 @@ app.post('/api/cases', (req, res) => {
   }
 });
 
+// Edit / Update case dossier
+app.put('/api/cases/:caseRef', (req, res) => {
+  try {
+    const { caseRef } = req.params;
+    const { title, priority, category, status, summary, notes, lead_officer } = req.body;
+
+    const existing = db.prepare('SELECT * FROM cases WHERE case_ref = ?').get(caseRef);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Case not found' });
+    }
+
+    const updatedTitle = title !== undefined ? title : existing.title;
+    const updatedPriority = priority !== undefined ? priority : existing.priority;
+    const updatedCategory = category !== undefined ? category : existing.category;
+    const updatedStatus = status !== undefined ? status : existing.status;
+    const updatedSummary = summary !== undefined ? summary : existing.summary;
+    const updatedNotes = notes !== undefined ? notes : existing.notes;
+    const updatedLeadOfficer = lead_officer !== undefined ? lead_officer : existing.lead_officer;
+
+    db.prepare(`
+      UPDATE cases 
+      SET title = ?, priority = ?, category = ?, status = ?, summary = ?, notes = ?, lead_officer = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE case_ref = ?
+    `).run(updatedTitle, updatedPriority, updatedCategory, updatedStatus, updatedSummary, updatedNotes, updatedLeadOfficer, caseRef);
+
+    db.prepare(`
+      INSERT INTO audit_trail (case_ref, officer, action, details)
+      VALUES (?, ?, ?, ?)
+    `).run(caseRef, 'COMMAND', 'CASE_UPDATED', `Case dossier "${updatedTitle}" updated by bureau investigator.`);
+
+    const updated = db.prepare('SELECT * FROM cases WHERE case_ref = ?').get(caseRef);
+    res.json({ success: true, case: updated, message: 'Case updated successfully' });
+  } catch (err) {
+    console.error('Error updating case:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Delete case dossier
 app.delete('/api/cases/:caseRef', (req, res) => {
   try {

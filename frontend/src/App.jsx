@@ -21,7 +21,9 @@ export default function App() {
       const data = await res.json();
       if (data.success && data.cases) {
         setCases(data.cases);
-        if (!selectedCaseRef && data.cases.length > 0) {
+        if (data.cases.length === 0) {
+          setSelectedCaseRef('');
+        } else if (!data.cases.some(c => c.case_ref === selectedCaseRef)) {
           setSelectedCaseRef(data.cases[0].case_ref);
         }
       }
