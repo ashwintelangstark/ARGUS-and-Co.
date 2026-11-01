@@ -25,5 +25,9 @@
     "postcss": "^8.5.32",
     "tailwindcss": "^4.3.3",
     "vite": "^5.4.14"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "esbuild@0.21.5": true
   }
 }

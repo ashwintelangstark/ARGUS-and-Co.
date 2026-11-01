@@ -7,6 +7,18 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  build: {
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-three': ['three', 'three/examples/jsm/controls/OrbitControls.js'],
+          'vendor-lucide': ['lucide-react']
+        }
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {

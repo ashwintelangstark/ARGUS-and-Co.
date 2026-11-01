@@ -19,24 +19,28 @@ let dbPath = path.join(dbDir, 'argus.sqlite');
 
 // On Vercel environments, ensure writable SQLite database in /tmp
 if (process.env.VERCEL) {
-  const tmpDb = '/tmp/argus.sqlite';
-  if (!fs.existsSync(tmpDb) && fs.existsSync(dbPath)) {
-    try {
-      fs.copyFileSync(dbPath, tmpDb);
-    } catch (e) {
-      console.warn('[DB copy to /tmp warning]:', e.message);
+  const tmpDb = path.join('/tmp', 'argus.sqlite');
+  if (!fs.existsSync(tmpDb)) {
+    if (fs.existsSync(dbPath)) {
+      try {
+        fs.copyFileSync(dbPath, tmpDb);
+      } catch (e) {
+        console.warn('[DB copy to /tmp warning]:', e.message);
+      }
     }
   }
-  if (fs.existsSync(tmpDb)) {
-    dbPath = tmpDb;
-  }
+  dbPath = tmpDb;
 }
 
 const db = new DatabaseSync(dbPath);
 
-// Enable WAL mode and foreign keys
+// Enable safe journal mode and foreign keys
 try {
-  db.exec(`PRAGMA journal_mode = WAL;`);
+  if (process.env.VERCEL) {
+    db.exec(`PRAGMA journal_mode = DELETE;`);
+  } else {
+    db.exec(`PRAGMA journal_mode = WAL;`);
+  }
   db.exec(`PRAGMA foreign_keys = ON;`);
 } catch (e) {
   console.warn('[DB Pragma warning]:', e.message);
