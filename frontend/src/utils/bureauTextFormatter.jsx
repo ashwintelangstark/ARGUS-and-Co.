@@ -290,3 +290,4 @@ export default function BureauContentRenderer({ content, className = '' }) {
 
   return <div className={`bureau-formatted-text font-elite ${className}`}>{elements}</div>;
 }
+
