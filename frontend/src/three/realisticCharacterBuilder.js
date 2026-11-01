@@ -329,7 +329,7 @@ export function createRealisticCharacter(agentId, options = {}) {
   group.scale.setScalar(scale);
 
   // Animation Update Loop
-  group.update = function(time, mouseTarget = { x: 0, y: 0 }, isSpeaking = false) {
+  group.update = function (time, mouseTarget = { x: 0, y: 0 }, isSpeaking = false) {
     // Breathing
     const breath = Math.sin(time * 1.3) * 0.02;
     body.position.y = breath;
@@ -356,7 +356,7 @@ export function createRealisticCharacter(agentId, options = {}) {
   };
 
   // 3D Studio Mode Shader Switcher
-  group.setRenderMode = function(mode) {
+  group.setRenderMode = function (mode) {
     const isWire = (mode === 'wireframe');
     dusterMat.wireframe = isWire;
     vestMat.wireframe = isWire;

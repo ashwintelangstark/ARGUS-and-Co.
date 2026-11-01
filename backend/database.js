@@ -8,10 +8,30 @@ const __dirname = path.dirname(__filename);
 
 const dbDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+  } catch (e) {
+    console.warn('[DB mkdir warning]:', e.message);
+  }
 }
 
-const dbPath = path.join(dbDir, 'argus.sqlite');
+let dbPath = path.join(dbDir, 'argus.sqlite');
+
+// On Vercel environments, ensure writable SQLite database in /tmp
+if (process.env.VERCEL) {
+  const tmpDb = '/tmp/argus.sqlite';
+  if (!fs.existsSync(tmpDb) && fs.existsSync(dbPath)) {
+    try {
+      fs.copyFileSync(dbPath, tmpDb);
+    } catch (e) {
+      console.warn('[DB copy to /tmp warning]:', e.message);
+    }
+  }
+  if (fs.existsSync(tmpDb)) {
+    dbPath = tmpDb;
+  }
+}
+
 const db = new DatabaseSync(dbPath);
 
 // Enable WAL mode and foreign keys

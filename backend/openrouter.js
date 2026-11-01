@@ -57,7 +57,7 @@ export async function generateAgentCompletion({
         headers: {
           'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'http://localhost:5173',
+          'HTTP-Referer': process.env.FRONTEND_URL || process.env.OPENROUTER_SITE_URL || 'http://localhost:5173',
           'X-Title': 'ARGUS and Co. Investigation Agency'
         },
         body: JSON.stringify({

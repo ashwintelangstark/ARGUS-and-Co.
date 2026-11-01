@@ -264,3 +264,4 @@ export function createSuspectTexture(title, category, description, isHypothesis 
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
