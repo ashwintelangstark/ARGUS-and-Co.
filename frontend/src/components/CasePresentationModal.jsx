@@ -19,7 +19,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'PROBABILITY MATRICES & ANOMALY CORRELATION',
     specialty: 'Algorithmic correlation of transaction timelines, anomaly vectors, and relational suspect graphs.',
     defaultText: (caseTitle, clueCount) => 
-      `Attention Bureau officers. I have calculated the Means, Motive, and Opportunity correlation matrix across the evidence register for "${caseTitle}". Anomaly indices indicate non-random coordination across the timeline with a 98.4% probability of premeditated execution. The relational link graph confirms our primary suspect used the corridor maintenance interval to access the scene unseen.`
+      `Attention Bureau officers. I have calculated the Means, Motive, and Opportunity correlation matrix across the evidence register for "${caseTitle}". Anomaly indices indicate non-random coordination across the timeline with a 98.4% probability of premeditated execution. The relational link graph confirms our primary suspect used the physical scene disruption to access the target unseen.`
   },
   {
     id: 'VANGUARD',
@@ -31,7 +31,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'FIELD OPERATIONS & WITNESS INTERVIEWS',
     specialty: 'Witness statements, movement timelines, corridor surveillance, and transit routes.',
     defaultText: (caseTitle) => 
-      `Officer Vanguard reporting from the field. Cross-referencing all witness statements for "${caseTitle}" reveals an immediate alibi collapse. While business associate Rowan Pike claims he was among guests, he cannot name a single witness during the critical reception interval. Meanwhile, Trustee Celeste Hart placed a figure matching his stature at the private corridor entrance.`
+      `Officer Vanguard reporting from the field. Cross-referencing all witness statements and transit manifests for "${caseTitle}" reveals an immediate alibi collapse. While the central suspect claimed to be elsewhere, they cannot produce a single independent witness during the critical occurrence window, directly contradicted by scene sightings.`
   },
   {
     id: 'LUTKIN',
@@ -43,7 +43,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'DIGITAL HASHES & PHYSICAL FORENSICS',
     specialty: 'Cryptographic SHA-256 verification, tool mark analysis, and physical exhibit forensics.',
     defaultText: (caseTitle) => 
-      `Forensics division reporting. Examination of physical exhibits for "${caseTitle}" proves unforced interior entry. Exhibit E-012 shows the service door latch was left disengaged, coinciding with camera recording gap E-001. Most critically, Exhibit E-011—the gallery wall clock—was manually altered to stage a false time of death, and summons note E-005 lured the victim into isolation.`
+      `Forensics division reporting. Examination of physical and digital exhibits for "${caseTitle}" proves unforced interior access. Cryptographic checksums verify zero post-incident file tampering, and microscopic tool marks confirm the perimeter was bypassed using authorized interior mechanisms to conceal the breach.`
   },
   {
     id: 'APEX',
@@ -55,7 +55,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'ADVERSARIAL STRESS-TEST & RED-TEAM AUDIT',
     specialty: 'Contrarian hypothesis testing, confirmation bias defense, and adversarial scrutiny.',
     defaultText: (caseTitle) => 
-      `As Deputy Review Officer, I cross-examined every alibi for "${caseTitle}". An outside intruder theory fails completely because all exterior entrances were guarded. Look at maintenance technician Tomas Reed's statement: unprompted, he denied touching the gallery wall clock before investigators even mentioned it! That guilty knowledge destroys their defense.`
+      `As Deputy Review Officer, I cross-examined every theory for "${caseTitle}". Outside intruder claims fail because exterior perimeters were guarded. The suspect statements exhibit unprompted denials and guilty knowledge that no innocent party could know, eliminating all reasonable doubt!`
   },
   {
     id: 'ARGUS',
@@ -67,7 +67,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'CHIEF VERDICT & CULPRIT APPREHENSION DIRECTIVE',
     specialty: 'Synthesis of all 4 investigative branches, auditing for omitted clues, and definitive case closure.',
     defaultText: (caseTitle) => 
-      `As Chief Investigation Officer, I have evaluated all empirical evidence and testimonies for "${caseTitle}". The conclusion of ARGUS and Co. is definitive and proven beyond reasonable doubt: the primary culprit is Rowan Pike, with maintenance technician Tomas Reed as inside facilitator! Pike acted to silence Adrian Vale before the gala announcement exposed his financial liabilities. Executive apprehension warrants are hereby dispatched. Case officially solved!`
+      `As Chief Investigation Officer, I have evaluated all empirical evidence and testimonies for "${caseTitle}". The conclusion of ARGUS and Co. is definitive and proven beyond reasonable doubt: the primary culprit acted with premeditated intent to silence the victim before critical revelations could be made. Executive apprehension warrants are hereby dispatched. Case officially solved!`
   }
 ];
 
@@ -124,6 +124,16 @@ export default function CasePresentationModal({
   const currentRawText = getSpeechText(activeOfficer);
   const spokenText = cleanSpokenText(currentRawText);
   const displayText = cleanPresentationText(currentRawText);
+
+  // Extract culprit name dynamically for Chief Argus verdict badge
+  const culpritBadge = (() => {
+    if (safeStep !== 4) return null;
+    const match = displayText.match(/(?:primary culprit is|culprit is|unmasked culprit:|perpetrator:?|apprehend\s+)\s*([A-Z][a-zA-Z\s]+?)(?:,|\.|\s+with|\s+acting|\s+before)/i);
+    if (match && match[1].trim().length > 2 && match[1].trim().length < 35) {
+      return match[1].trim().toUpperCase();
+    }
+    return 'PRIMARY SUSPECT UNMASKED';
+  })();
 
   // Trigger speech when step changes
   useEffect(() => {
@@ -341,7 +351,7 @@ export default function CasePresentationModal({
                     <div className="mb-2 px-3 py-1.5 rounded bg-[#ebd2a0] border border-[#b88c4d] text-[#24170f] flex items-center justify-between shadow-sm">
                       <span className="font-rye text-xs font-bold text-[#422511]">★ BUREAU VERDICT: PRIMARY CULPRIT UNMASKED</span>
                       <span className="text-[10px] font-elite font-bold px-2 py-0.5 rounded bg-[#f59e0b] text-[#1a0f07] shadow-sm">
-                        ROWAN PIKE
+                        {culpritBadge}
                       </span>
                     </div>
                   )}

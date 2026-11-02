@@ -1,6 +1,6 @@
 import { generateAgentCompletion } from '../openrouter.js';
 import { AGENT_PROFILES } from './agentPrompts.js';
-import { scanCaseEntities, generateFactualBureauDeductions } from './deductiveEngine.js';
+import { extractCaseEntities, generateUniversalCaseDeductions, generateExpansiveCluesWeb } from './universalCaseAnalyzer.js';
 import db from '../database.js';
 
 /**
@@ -20,6 +20,12 @@ export async function runBureauConclave({
   if (!caseData) throw new Error(`Case ${caseRef} not found in database`);
 
   const evidenceList = db.prepare('SELECT * FROM evidence WHERE case_ref = ? ORDER BY id ASC').all(caseRef);
+  const userInterrogations = db.prepare(`
+    SELECT officer_name, role, message, created_at 
+    FROM deliberations 
+    WHERE case_ref = ? AND action_type IN ('interrogation_turn', 'interrogation_response')
+    ORDER BY id ASC
+  `).all(caseRef);
 
   const emit = (event, payload) => {
     if (typeof onProgress === 'function') {
@@ -34,26 +40,31 @@ export async function runBureauConclave({
       : `Detective Argus has convened the Bureau Conclave for case ${caseRef}: "${caseData.title}"`
   });
 
-  // Evaluate completeness of evidence
-  const hasExtractedText = evidenceList.length > 0 && evidenceList.some(e => 
-    e.extracted_text && e.extracted_text.length > 100
-  );
+  const scannedEntities = extractCaseEntities(caseRef);
 
-  const scannedEntities = scanCaseEntities(caseRef);
-
-  // Build the rich, complete case evidence summary (NEVER truncate extracted text to 300 chars!)
-  const caseContextSummary = `
+  const interrogationSection = userInterrogations.length > 0 ? `
 ================================================================================
+CRITICAL LEAD INVESTIGATOR INTERROGATION INQUIRIES & RE-ANALYSIS PROBES:
+The Lead Investigator held interactive 1-on-1 interrogation sessions with the agents.
+The squad must address, stress-test, and recalculate everything incorporating these points:
+${userInterrogations.map(u => `• [${u.officer_name}]: ${u.message}`).join('\n\n')}
+================================================================================` : '';
+
+  // Build the rich, complete case evidence summary (NEVER truncate extracted text!)
+  const caseContextSummary = `
+===============================================================================
 CASE DOSSIER: ${caseData.case_ref} — "${caseData.title}"
+CRIME DOMAIN: ${scannedEntities?.crimeDomain || caseData.category || 'Special Investigation'}
 CATEGORY: ${caseData.category} | PRIORITY: ${caseData.priority} | STATUS: ${caseData.status}
-${isReAnalysis ? 'MODE: RE-ANALYSIS (Execute Alternative Investigative Vector — Challenge baseline assumptions, uncover concealed motives and subtle discrepancies)' : 'MODE: STANDARD BUREAU CONCLAVE'}
+${isReAnalysis ? 'MODE: RE-ANALYSIS (Recalculate from scratch — Incorporate investigator probes, challenge baseline assumptions, uncover concealed motives)' : 'MODE: STANDARD BUREAU CONCLAVE'}
 CASE SUMMARY: ${caseData.summary || 'None'}
 INTAKE NOTES: ${caseData.notes || 'None'}
 
-VICTIM: ${scannedEntities?.victimName || 'Identified in evidence files'}
-LOCATION: ${scannedEntities?.location || 'Crime scene venue'}
-OCCURRENCE WINDOW: ${scannedEntities?.occurrenceWindow || 'Critical timeline window'}
-================================================================================
+PRIMARY VICTIM / TARGET: ${scannedEntities?.victimName || 'Identified in case files'}
+CRIME SCENE & LOCATION: ${scannedEntities?.sceneLocation || 'Primary incident scene'}
+OCCURRENCE WINDOW: ${scannedEntities?.occurrenceWindow || 'Temporal incident window'}
+===============================================================================
+${interrogationSection}
 
 REGISTERED EVIDENCE DOSSIER & FULL DOCUMENT TRANSCRIPTS (${evidenceList.length} items):
 ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `
@@ -262,97 +273,49 @@ OFFICIAL CASE RESOLUTION & VERDICT BREAKDOWN:
   });
 
   try {
-    // Generate structured clues connecting suspects, evidence, location, hypothesis, and verdict
+    // Generate expansive, interconnected clues web (covering all victims, suspects, witnesses, exhibits, locations)
     db.prepare(`DELETE FROM clues WHERE case_ref = ?`).run(caseRef);
 
+    const expansiveNodes = generateExpansiveCluesWeb(caseRef);
     const insertClueStmt = db.prepare(`
       INSERT INTO clues (case_ref, title, type, description, pos_x, pos_y, color, connections)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // Parse factual deduction data for the case
-    const factualDeduction = generateFactualBureauDeductions(caseRef);
+    const insertedIds = [];
+    for (const n of expansiveNodes) {
+      const res = insertClueStmt.run(
+        caseRef,
+        n.title,
+        n.type,
+        n.description,
+        n.pos_x,
+        n.pos_y,
+        n.color,
+        '[]'
+      );
+      insertedIds.push(res.lastInsertRowid);
+    }
 
-    // 1. Primary Suspect Card
-    const c1 = insertClueStmt.run(
-      caseRef,
-      `Primary Suspect: ${factualDeduction?.culprit || 'Rowan Pike'}`,
-      'suspect',
-      `${factualDeduction?.motive || 'Identified as central perpetrator with critical financial motive and collapsed timeline alibi.'}`,
-      -350,
-      -120,
-      '#f59e0b',
-      '[]'
-    );
-    const idSuspect = c1.lastInsertRowid;
+    // Connect nodes via real database IDs for SVG red yarn rendering
+    for (let i = 0; i < expansiveNodes.length; i++) {
+      const relativeConns = JSON.parse(expansiveNodes[i].connections || '[]');
+      const mappedConns = relativeConns
+        .map(relIdx => insertedIds[relIdx - 1])
+        .filter(id => id && id !== insertedIds[i]);
 
-    // 2. Key Physical / Digital Evidence Card
-    const c2 = insertClueStmt.run(
-      caseRef,
-      `Key Forensic Evidence: Exhibit E-005 (Handwritten Summons Note)`,
-      'evidence',
-      `Paper fragment recovered near the desk used to lure the victim away from public ballroom view into the secluded private gallery.`,
-      -100,
-      -220,
-      '#00d2ff',
-      JSON.stringify([Number(idSuspect)])
-    );
-    const idEvidence = c2.lastInsertRowid;
-
-    // 3. Crime Scene / Corridor Choke Point Card
-    const c3 = insertClueStmt.run(
-      caseRef,
-      `Corridor Choke Point: Exhibit E-012 (Unlatched Service Door)`,
-      'location',
-      `Service passage door left disengaged, enabling unmonitored entry during the localized camera blackout.`,
-      220,
-      -160,
-      '#10b981',
-      JSON.stringify([Number(idEvidence)])
-    );
-    const idLocation = c3.lastInsertRowid;
-
-    // 4. Accomplice / Material Facilitator Card
-    const c4 = insertClueStmt.run(
-      caseRef,
-      `Material Facilitation: ${factualDeduction?.accomplice || 'Tomas Reed'} (Maintenance)`,
-      'suspect',
-      `Corridor lighting work order E-013 coincided with camera outage E-001. Made unprompted guilty denial regarding gallery wall clock E-011.`,
-      -320,
-      180,
-      '#ea580c',
-      JSON.stringify([Number(idSuspect), Number(idLocation)])
-    );
-    const idAssociate = c4.lastInsertRowid;
-
-    // 5. Critical Contradiction Card
-    const c5 = insertClueStmt.run(
-      caseRef,
-      `Fatal Contradiction: Exhibit E-011 (Tampered Wall Clock)`,
-      'hypothesis',
-      `Manual alteration of wall clock contradicted discovery time to stage a fake alibi, exposed during Apex red-team review.`,
-      0,
-      140,
-      '#a855f7',
-      JSON.stringify([Number(idEvidence), Number(idAssociate)])
-    );
-    const idHypothesis = c5.lastInsertRowid;
-
-    // 6. Bureau Chief Final Verdict Card
-    insertClueStmt.run(
-      caseRef,
-      `★ Official Bureau Verdict: Chief Argus Judgment`,
-      'hypothesis',
-      `Conviction of primary culprit ${factualDeduction?.culprit || 'Rowan Pike'}. Motive: financial ruin avoidance. Warrants dispatched.`,
-      350,
-      120,
-      '#eab308',
-      JSON.stringify([Number(idSuspect), Number(idHypothesis), Number(idLocation)])
-    );
+      if (mappedConns.length > 0) {
+        db.prepare('UPDATE clues SET connections = ? WHERE id = ?').run(
+          JSON.stringify(mappedConns),
+          insertedIds[i]
+        );
+      }
+    }
 
     emit('clues_updated', {
       caseRef,
-      message: 'Autonomous detective thread connection flowchart successfully created.'
+      count: expansiveNodes.length,
+      message: `Autonomous detective web expanded with ${expansiveNodes.length} interconnected nodes covering all victims, suspects, witnesses, and exhibits.`
     });
   } catch (err) {
     console.warn('[Conclave Clues Generation warning]:', err.message);

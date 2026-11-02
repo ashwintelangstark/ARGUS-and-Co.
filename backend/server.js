@@ -13,7 +13,7 @@ import { generateAgentCompletion, FREE_MODELS } from './openrouter.js';
 import { AGENT_PROFILES } from './agents/agentPrompts.js';
 import { runBureauConclave } from './agents/investigationOrchestrator.js';
 import { extractTextFromFile, backfillMissingEvidenceText } from './documentScanner.js';
-import { scanCaseEntities } from './agents/deductiveEngine.js';
+import { extractCaseEntities } from './agents/universalCaseAnalyzer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -896,16 +896,18 @@ app.post('/api/interrogate', async (req, res) => {
         const evidence = db.prepare('SELECT original_name, file_type, forensic_notes, extracted_text FROM evidence WHERE case_ref = ?').all(targetCaseRef);
         const clues = db.prepare('SELECT title, description, type FROM clues WHERE case_ref = ?').all(targetCaseRef);
         const deliberations = db.prepare('SELECT officer_name, message FROM deliberations WHERE case_ref = ? ORDER BY created_at DESC LIMIT 4').all(targetCaseRef);
-        const scanned = scanCaseEntities(targetCaseRef);
+        const scanned = extractCaseEntities(targetCaseRef);
 
         caseContext = `
 ACTIVE CASE UNDER INVESTIGATION:
 - Dossier Reference: ${caseItem.case_ref}
 - Title: ${caseItem.title}
+- Crime Domain: ${scanned?.crimeDomain || 'Special Investigation'}
 - Victim: ${scanned?.victimName || 'Identified in case files'} | Occurrence Window: ${scanned?.occurrenceWindow || 'Incident window'}
-- Location: ${scanned?.location || 'Crime scene venue'}
-- Witnesses / Persons of Interest (${scanned?.witnesses?.length || 0}): ${scanned?.witnesses?.map(w => `${w.code}: ${w.name}`).join(', ') || 'Pending examination'}
-- Key Physical & Digital Exhibits (${scanned?.exhibits?.length || evidence.length}): ${scanned?.exhibits?.map(e => `${e.code}: ${e.title}`).join(', ') || evidence.map(e => e.original_name).join(', ')}
+- Location: ${scanned?.sceneLocation || 'Crime scene venue'}
+- Witnesses / Persons of Interest (${scanned?.witnesses?.length || 0}): ${scanned?.witnesses?.map(w => `${w.id}: ${w.name}`).join(', ') || 'Pending examination'}
+- Suspects Under Scrutiny: ${scanned?.suspects?.slice(0, 4).map(s => s.name).join(', ') || 'Persons of interest identified from statements'}
+- Key Physical & Digital Exhibits (${scanned?.exhibits?.length || evidence.length}): ${scanned?.exhibits?.map(e => `${e.id}: ${e.title}`).join(', ') || evidence.map(e => e.original_name).join(', ')}
 - Forensic Evidence Files (${evidence.length}): ${evidence.length > 0 ? evidence.map(e => `[${e.original_name} (${e.file_type}): ${e.extracted_text ? e.extracted_text.slice(0, 1500) : e.forensic_notes || 'logged'}]`).join('\n\n') : 'No physical evidence registered yet.'}
 - Evidence Board Clues & Suspects: ${clues.length > 0 ? clues.map(c => `${c.title} (${c.type}): ${c.description}`).join('; ') : 'Board graph being assembled.'}
 ${deliberations.length > 0 ? `- Recent Deliberations: ${deliberations.map(d => `${d.officer_name}: ${d.message.slice(0, 160)}...`).join(' | ')}` : ''}`;
@@ -941,6 +943,12 @@ ${caseContext}`;
     });
 
     if (targetCaseRef) {
+      // Record both user question and agent reply in deliberations for collaborative inquiry history
+      db.prepare(`
+        INSERT INTO deliberations (case_ref, officer_name, role, action_type, message, model_used)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(targetCaseRef, 'Lead Investigator', 'Investigator Probe', 'interrogation_turn', `Investigator Question to ${profile.name}: "${message}"`, 'user_chat');
+
       db.prepare(`
         INSERT INTO deliberations (case_ref, officer_name, role, action_type, message, model_used)
         VALUES (?, ?, ?, ?, ?, ?)

@@ -259,8 +259,8 @@ export default function EvidenceBoard({
           })}
         </svg>
 
-        {/* Clues Card Grid Flowchart */}
-        <div className="relative z-20 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-8 max-w-6xl mx-auto pt-4 pb-12">
+        {/* Clues Card Grid Flowchart - Expansive Multi-Entity Evidence Canvas */}
+        <div className="relative z-20 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 max-w-7xl mx-auto pt-4 pb-16">
           {clues.map((clue) => {
             const isSelected = selectedClue?.id === clue.id;
 

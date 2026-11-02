@@ -171,7 +171,7 @@ export default function ReportsView({
 
     if (culpritMatch || motiveMatch) {
       return {
-        culprit: culpritMatch ? culpritMatch[1].trim() : 'Rowan Pike',
+        culprit: culpritMatch ? culpritMatch[1].trim() : 'Primary Identified Subject',
         accomplice: accompliceMatch ? accompliceMatch[1].trim() : null,
         motive: motiveMatch ? motiveMatch[1].trim() : '',
         opportunity: oppMatch ? oppMatch[1].trim() : '',
