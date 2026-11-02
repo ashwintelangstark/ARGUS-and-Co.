@@ -12,6 +12,8 @@ import db, { initDatabase, hashPassword, verifyPassword } from './database.js';
 import { generateAgentCompletion, FREE_MODELS } from './openrouter.js';
 import { AGENT_PROFILES } from './agents/agentPrompts.js';
 import { runBureauConclave } from './agents/investigationOrchestrator.js';
+import { extractTextFromFile, backfillMissingEvidenceText } from './documentScanner.js';
+import { scanCaseEntities } from './agents/deductiveEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,8 +22,9 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Initialize SQLite database
+// Initialize SQLite database and scan for missing evidence text
 initDatabase();
+backfillMissingEvidenceText(db).catch(err => console.warn('[Startup backfill warning]:', err.message));
 
 app.use(cors());
 
@@ -619,15 +622,15 @@ app.post('/api/cases/:caseRef/evidence', upload.array('files', 10), async (req, 
       const fileBuffer = fs.readFileSync(file.path);
       const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
-      // Attempt text extraction for txt, csv, json, log
+      // Comprehensive full-text document scanning (PDF, TXT, CSV, JSON, LOG, MD, XML, RTF)
       let extractedText = null;
-      const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
-      if (['txt', 'csv', 'json', 'log', 'md'].includes(ext)) {
-        try {
-          extractedText = fileBuffer.toString('utf-8').slice(0, 4000); // sample first 4KB
-        } catch {}
+      try {
+        extractedText = await extractTextFromFile(file.path, file.originalname);
+      } catch (err) {
+        console.warn(`[Evidence Upload Scanner Warning] Could not extract text from ${file.originalname}:`, err.message);
       }
 
+      const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
       const stmt = db.prepare(`
         INSERT INTO evidence (case_ref, filename, original_name, file_path, file_size, file_type, hash_sha256, extracted_text, forensic_notes, assigned_officer)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -642,7 +645,7 @@ app.post('/api/cases/:caseRef/evidence', upload.array('files', 10), async (req, 
         ext.toUpperCase() || 'FILE',
         hash,
         extractedText,
-        notes || `Registered into evidence custody by Officer ${assigned_officer}.`,
+        notes || `Registered into evidence custody by Officer ${assigned_officer}. Full text scanned.`,
         assigned_officer
       );
 
@@ -652,18 +655,43 @@ app.post('/api/cases/:caseRef/evidence', upload.array('files', 10), async (req, 
         original_name: file.originalname,
         size: file.size,
         type: ext.toUpperCase(),
-        hash
+        hash,
+        text_length: extractedText ? extractedText.length : 0
       });
     }
 
     db.prepare(`
       INSERT INTO audit_trail (case_ref, officer, action, details)
       VALUES (?, ?, ?, ?)
-    `).run(caseRef, assigned_officer, 'EVIDENCE_LOGGED', `${inserted.length} evidence file(s) logged.`);
+    `).run(caseRef, assigned_officer, 'EVIDENCE_LOGGED', `${inserted.length} evidence file(s) logged and text indexed.`);
 
     res.status(201).json({ success: true, count: inserted.length, evidence: inserted });
   } catch (err) {
     console.error('Error uploading evidence:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Re-scan and extract text for all evidence items in a case
+app.post('/api/cases/:caseRef/reextract', async (req, res) => {
+  try {
+    const { caseRef } = req.params;
+    const evidenceList = db.prepare('SELECT id, file_path, original_name FROM evidence WHERE case_ref = ?').all(caseRef);
+    let updated = 0;
+
+    for (const item of evidenceList) {
+      if (item.file_path && fs.existsSync(item.file_path)) {
+        const text = await extractTextFromFile(item.file_path, item.original_name);
+        if (text && text.length > 0) {
+          db.prepare('UPDATE evidence SET extracted_text = ? WHERE id = ?').run(text, item.id);
+          updated++;
+        }
+      }
+    }
+
+    res.json({ success: true, caseRef, updated, total: evidenceList.length });
+  } catch (err) {
+    console.error('Error re-extracting evidence:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -866,18 +894,21 @@ app.post('/api/interrogate', async (req, res) => {
       caseItem = db.prepare('SELECT * FROM cases WHERE case_ref = ?').get(targetCaseRef);
       if (caseItem) {
         const evidence = db.prepare('SELECT original_name, file_type, forensic_notes, extracted_text FROM evidence WHERE case_ref = ?').all(targetCaseRef);
-        const clues = db.prepare('SELECT title, description, category, suspect FROM clues WHERE case_ref = ?').all(targetCaseRef);
+        const clues = db.prepare('SELECT title, description, type FROM clues WHERE case_ref = ?').all(targetCaseRef);
         const deliberations = db.prepare('SELECT officer_name, message FROM deliberations WHERE case_ref = ? ORDER BY created_at DESC LIMIT 4').all(targetCaseRef);
+        const scanned = scanCaseEntities(targetCaseRef);
 
         caseContext = `
 ACTIVE CASE UNDER INVESTIGATION:
 - Dossier Reference: ${caseItem.case_ref}
 - Title: ${caseItem.title}
-- Priority: ${caseItem.priority || 'High'} | Status: ${caseItem.status || 'Active'}
-- Case Notes & Summary: ${caseItem.notes || caseItem.summary || 'Under active multi-agent investigation.'}
-- Forensic Evidence Files (${evidence.length}): ${evidence.length > 0 ? evidence.map(e => `[${e.original_name} (${e.file_type}): ${e.forensic_notes || 'logged'}${e.extracted_text ? ` - Excerpt: ${e.extracted_text.slice(0, 150)}` : ''}]`).join('; ') : 'No physical evidence registered yet.'}
-- Evidence Board Clues & Suspects: ${clues.length > 0 ? clues.map(c => `${c.title} (Suspect: ${c.suspect || 'Unknown'}, Category: ${c.category || 'Clue'}): ${c.description}`).join('; ') : 'Board graph being assembled.'}
-${deliberations.length > 0 ? `- Recent Deliberations: ${deliberations.map(d => `${d.officer_name}: ${d.message.slice(0, 120)}...`).join(' | ')}` : ''}`;
+- Victim: ${scanned?.victimName || 'Identified in case files'} | Occurrence Window: ${scanned?.occurrenceWindow || 'Incident window'}
+- Location: ${scanned?.location || 'Crime scene venue'}
+- Witnesses / Persons of Interest (${scanned?.witnesses?.length || 0}): ${scanned?.witnesses?.map(w => `${w.code}: ${w.name}`).join(', ') || 'Pending examination'}
+- Key Physical & Digital Exhibits (${scanned?.exhibits?.length || evidence.length}): ${scanned?.exhibits?.map(e => `${e.code}: ${e.title}`).join(', ') || evidence.map(e => e.original_name).join(', ')}
+- Forensic Evidence Files (${evidence.length}): ${evidence.length > 0 ? evidence.map(e => `[${e.original_name} (${e.file_type}): ${e.extracted_text ? e.extracted_text.slice(0, 1500) : e.forensic_notes || 'logged'}]`).join('\n\n') : 'No physical evidence registered yet.'}
+- Evidence Board Clues & Suspects: ${clues.length > 0 ? clues.map(c => `${c.title} (${c.type}): ${c.description}`).join('; ') : 'Board graph being assembled.'}
+${deliberations.length > 0 ? `- Recent Deliberations: ${deliberations.map(d => `${d.officer_name}: ${d.message.slice(0, 160)}...`).join(' | ')}` : ''}`;
       }
     }
 

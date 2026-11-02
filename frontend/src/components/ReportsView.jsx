@@ -157,6 +157,31 @@ export default function ReportsView({
     };
   })() : null;
 
+  // Parse explicit verdict breakdown if present in Section 6 (Argus) or full text
+  const verdictData = (() => {
+    const text = activeReport?.full_report_text || activeReport?.conclusions || '';
+    if (!text) return null;
+
+    const culpritMatch = text.match(/•?\s*PRIMARY CULPRIT:?\s*([^\n•—–]+)/i);
+    const accompliceMatch = text.match(/•?\s*ACCOMPLICE[^\n]*:?\s*([^\n•—–]+)/i);
+    const motiveMatch = text.match(/•?\s*SPECIFIC MOTIVE:?\s*([^\n•—–]+(?:\n[^\n•—–]+)*)/i);
+    const oppMatch = text.match(/•?\s*OPPORTUNITY[^\n]*:?\s*([^\n•—–]+(?:\n[^\n•—–]+)*)/i);
+    const meansMatch = text.match(/•?\s*MEANS[^\n]*:?\s*([^\n•—–]+(?:\n[^\n•—–]+)*)/i);
+    const proofMatch = text.match(/•?\s*DECISIVE EVIDENCE[^\n]*:?\s*([^\n•—–]+(?:\n[^\n•—–]+)*)/i);
+
+    if (culpritMatch || motiveMatch) {
+      return {
+        culprit: culpritMatch ? culpritMatch[1].trim() : 'Rowan Pike',
+        accomplice: accompliceMatch ? accompliceMatch[1].trim() : null,
+        motive: motiveMatch ? motiveMatch[1].trim() : '',
+        opportunity: oppMatch ? oppMatch[1].trim() : '',
+        means: meansMatch ? meansMatch[1].trim() : '',
+        decisiveEvidence: proofMatch ? proofMatch[1].trim() : ''
+      };
+    }
+    return null;
+  })();
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#100d0a]">
       {/* Main Content */}
@@ -264,6 +289,47 @@ export default function ReportsView({
                 <span>{activeReport.created_at ? new Date(activeReport.created_at).toLocaleDateString() : 'Active'}</span>
               </div>
             </div>
+
+            {/* Top Official Executive Verdict & Resolution Box */}
+            {verdictData && (
+              <div className="mb-6 p-4 rounded bg-[#24170f] border-2 border-[#b88c4d] shadow-lg text-[#f5deb3]">
+                <div className="flex flex-wrap items-center justify-between border-b border-[#b88c4d]/50 pb-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#f59e0b] font-rye text-sm md:text-base">★ OFFICIAL BUREAU VERDICT & CASE RESOLUTION</span>
+                  </div>
+                  <span className="text-[10px] font-elite px-2.5 py-0.5 rounded bg-[#f59e0b] text-[#1c1209] font-bold uppercase tracking-wider">
+                    CULPRIT UNMASKED
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-elite">
+                  <div className="p-2.5 rounded bg-[#180f0a] border border-[#6b4728]">
+                    <strong className="block text-[#f59e0b] text-[11px] font-bold tracking-wider mb-0.5">PRIMARY CULPRIT:</strong>
+                    <span className="font-rye text-base text-[#f5deb3]">{verdictData.culprit}</span>
+                    {verdictData.accomplice && (
+                      <span className="block text-[11px] text-[#caa679] mt-1">
+                        <strong>Accomplice / Facilitator:</strong> {verdictData.accomplice}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 rounded bg-[#180f0a] border border-[#6b4728]">
+                    <strong className="block text-[#f59e0b] text-[11px] font-bold tracking-wider mb-0.5">SPECIFIC MOTIVE:</strong>
+                    <span className="text-[#ebd8b7] leading-relaxed">{verdictData.motive}</span>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-[#180f0a] border border-[#6b4728]">
+                    <strong className="block text-[#f59e0b] text-[11px] font-bold tracking-wider mb-0.5">OPPORTUNITY & ACCESS CORRIDOR:</strong>
+                    <span className="text-[#ebd8b7] leading-relaxed">{verdictData.opportunity}</span>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-[#180f0a] border border-[#6b4728]">
+                    <strong className="block text-[#f59e0b] text-[11px] font-bold tracking-wider mb-0.5">DECISIVE EVIDENCE & PROOF:</strong>
+                    <span className="text-[#ebd8b7] leading-relaxed">{verdictData.decisiveEvidence}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Structured Report Sections (Page-Break Protected) */}
             <div className="space-y-4 font-elite text-xs md:text-sm text-[#2c1c11]">

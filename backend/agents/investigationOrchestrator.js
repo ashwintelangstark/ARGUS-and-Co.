@@ -1,5 +1,6 @@
 import { generateAgentCompletion } from '../openrouter.js';
 import { AGENT_PROFILES } from './agentPrompts.js';
+import { scanCaseEntities, generateFactualBureauDeductions } from './deductiveEngine.js';
 import db from '../database.js';
 
 /**
@@ -18,7 +19,7 @@ export async function runBureauConclave({
   const caseData = db.prepare('SELECT * FROM cases WHERE case_ref = ?').get(caseRef);
   if (!caseData) throw new Error(`Case ${caseRef} not found in database`);
 
-  const evidenceList = db.prepare('SELECT * FROM evidence WHERE case_ref = ?').all(caseRef);
+  const evidenceList = db.prepare('SELECT * FROM evidence WHERE case_ref = ? ORDER BY id ASC').all(caseRef);
 
   const emit = (event, payload) => {
     if (typeof onProgress === 'function') {
@@ -33,32 +34,36 @@ export async function runBureauConclave({
       : `Detective Argus has convened the Bureau Conclave for case ${caseRef}: "${caseData.title}"`
   });
 
-  // Evaluate completeness of evidence to conditionally trigger deep searches
-  const hasForensicDetails = evidenceList.length > 0 && evidenceList.some(e => 
-    (e.extracted_text && e.extracted_text.length > 40) || (e.forensic_notes && e.forensic_notes.length > 20) || e.hash_sha256
+  // Evaluate completeness of evidence
+  const hasExtractedText = evidenceList.length > 0 && evidenceList.some(e => 
+    e.extracted_text && e.extracted_text.length > 100
   );
-  const lutkinNeedsDeepSearch = evidenceList.length === 0 || !hasForensicDetails;
 
-  const hasIntelDetails = Boolean(
-    caseData.notes && 
-    (caseData.notes.length > 100 || /suspect|witness|whereabouts|manifest|wiretap|alias|registry/i.test(caseData.notes))
-  );
-  const vanguardNeedsDeepSearch = !hasIntelDetails;
+  const scannedEntities = scanCaseEntities(caseRef);
 
-  const cortexNeedsDeepSearch = evidenceList.length < 2 || isReAnalysis;
-
+  // Build the rich, complete case evidence summary (NEVER truncate extracted text to 300 chars!)
   const caseContextSummary = `
-CASE FILE: ${caseData.case_ref} — "${caseData.title}"
+================================================================================
+CASE DOSSIER: ${caseData.case_ref} — "${caseData.title}"
 CATEGORY: ${caseData.category} | PRIORITY: ${caseData.priority} | STATUS: ${caseData.status}
-${isReAnalysis ? 'MODE: RE-ANALYSIS (Execute Alternative Investigative Vector — Challenge baseline assumptions, uncover concealed motives and subtle discrepancies overlooked in previous reviews)' : 'MODE: STANDARD BUREAU CONCLAVE'}
-SUMMARY: ${caseData.summary || 'None'}
+${isReAnalysis ? 'MODE: RE-ANALYSIS (Execute Alternative Investigative Vector — Challenge baseline assumptions, uncover concealed motives and subtle discrepancies)' : 'MODE: STANDARD BUREAU CONCLAVE'}
+CASE SUMMARY: ${caseData.summary || 'None'}
 INTAKE NOTES: ${caseData.notes || 'None'}
 
-REGISTERED EVIDENCE REGISTER (${evidenceList.length} items):
-${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_type.toUpperCase()}] "${e.original_name}" (${e.file_size} bytes)
-   SHA-256 Hash: ${e.hash_sha256 || 'Calculated at intake'}
-   Forensic Notes: ${e.forensic_notes || 'Pending examination'}
-   Content Snippet: ${e.extracted_text ? e.extracted_text.slice(0, 300) : 'Binary evidence archive'}`).join('\n\n') : 'NO EVIDENCE FILES LOGGED BY USER. DEEP WEB SEARCH MANDATED.'}
+VICTIM: ${scannedEntities?.victimName || 'Identified in evidence files'}
+LOCATION: ${scannedEntities?.location || 'Crime scene venue'}
+OCCURRENCE WINDOW: ${scannedEntities?.occurrenceWindow || 'Critical timeline window'}
+================================================================================
+
+REGISTERED EVIDENCE DOSSIER & FULL DOCUMENT TRANSCRIPTS (${evidenceList.length} items):
+${evidenceList.length > 0 ? evidenceList.map((e, idx) => `
+--------------------------------------------------------------------------------
+EXHIBIT #${idx + 1}: [${e.file_type.toUpperCase()}] "${e.original_name}" (${e.file_size} bytes)
+SHA-256 HASH: ${e.hash_sha256 || 'Calculated at intake'}
+FORENSIC NOTES: ${e.forensic_notes || 'Pending examination'}
+FULL EXTRACTED DOCUMENT TEXT:
+${e.extracted_text ? e.extracted_text : '(No text extracted / Binary asset)'}
+--------------------------------------------------------------------------------`).join('\n\n') : 'NO EVIDENCE FILES LOGGED BY USER.'}
   `.trim();
 
   const conversationHistory = [];
@@ -105,8 +110,8 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
   });
 
   const argusIntroPrompt = isReAnalysis
-    ? `You are opening the RE-ANALYSIS Conclave for case "${caseData.title}". State that the bureau is discarding conventional baseline conclusions. Direct the squad to look for hidden actors, forged alibis, financial trails, or counter-forensic tampering that humans easily miss. Task Officer Lutkin to re-examine the physical evidence under this new lens.`
-    : `You are opening the Bureau Conclave for case "${caseData.title}". State the core mystery to solve, identify key questions, evaluate evidence availability, and task Officer Lutkin with the initial forensic examination of the evidence.`;
+    ? `You are opening the RE-ANALYSIS Conclave for case "${caseData.title}". State that the bureau is discarding superficial assumptions. Direct the squad to scrutinize the full evidence transcripts above: every witness statement, alibi contradiction, timeline gap, and physical exhibit. Task Officer Lutkin with re-examining the physical and digital exhibits.`
+    : `You are opening the Bureau Conclave for case "${caseData.title}". Thoroughly review the uploaded evidence dossier and transcripts above. State the core facts: victim, location, occurrence window, and identify key persons of interest and physical exhibits from the files. Task Officer Lutkin with the initial empirical forensic examination.`;
 
   const argusIntro = await generateAgentCompletion({
     officerId: 'ARGUS',
@@ -119,24 +124,15 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
   recordTurn('ARGUS', 'conclave_turn', argusIntro.content, argusIntro.modelUsed);
 
   // =========================================================================
-  // STAGE 2: LUTKIN Forensic Examination (Conditional Deep Search)
+  // STAGE 2: LUTKIN Forensic Examination
   // =========================================================================
   await delay(1000);
+  emit('status', { 
+    stage: 'LUTKIN_FORENSICS', 
+    message: 'Officer Lutkin is verifying digital checksums, file formats, and physical trace integrity across all exhibits...' 
+  });
 
-  let lutkinPrompt = '';
-  if (lutkinNeedsDeepSearch) {
-    emit('status', { 
-      stage: 'LUTKIN_DEEP_SEARCH', 
-      message: 'Evidence register lacks complete trace data. Officer Lutkin is executing Deep Web Forensic Search across ballistics, toxicological registries, and cryptographic databases...' 
-    });
-    lutkinPrompt = `MANDATORY FORENSIC PROTOCOL: Notice that the registered evidence files are incomplete or lack granular trace/ballistics/chemical data. Perform an autonomous DEEP WEB FORENSIC SEARCH into global archives, firearm serials, chemical registries, audio spectrogram signatures, and hash verification logs. Present both the provided file analysis and your external deep web forensic findings with high scientific precision.`;
-  } else {
-    emit('status', { 
-      stage: 'LUTKIN_FORENSICS', 
-      message: 'Officer Lutkin is verifying digital checksums, file formats, and physical trace integrity...' 
-    });
-    lutkinPrompt = `MANDATORY FORENSIC PROTOCOL: The uploaded evidence register contains verified files. DO NOT conduct external deep search; strictly confine your findings to the empirical evidence files provided, their SHA-256 integrity checksums, digital metadata, and mechanical traces.`;
-  }
+  const lutkinPrompt = `MANDATORY FORENSIC PROTOCOL: Carefully examine the full evidence transcripts provided above. Analyze every physical and digital exhibit mentioned in the dossier (such as CCTV/NVR footage gaps, beverage service containers, handwritten notes, wall clock mechanisms, door latches, and maintenance work orders). Cite specific exhibit numbers and technical findings based strictly on the case files.`;
 
   const lutkinResponse = await generateAgentCompletion({
     officerId: 'LUTKIN',
@@ -145,30 +141,21 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
     messages: [
       { role: 'user', content: caseContextSummary },
       ...conversationHistory,
-      { role: 'user', content: `Officer Lutkin, report your forensic findings. ${lutkinPrompt}` }
+      { role: 'user', content: `Officer Lutkin, report your forensic findings on the evidence register. ${lutkinPrompt}` }
     ]
   });
   recordTurn('LUTKIN', 'forensics', lutkinResponse.content, lutkinResponse.modelUsed);
 
   // =========================================================================
-  // STAGE 3: VANGUARD Field Intelligence & OSINT (Conditional Deep Search)
+  // STAGE 3: VANGUARD Field Intelligence & Witness Statements
   // =========================================================================
   await delay(1000);
+  emit('status', { 
+    stage: 'VANGUARD_INTEL', 
+    message: 'Officer Vanguard is analyzing witness statements, movement logs, and physical transit corridors...' 
+  });
 
-  let vanguardPrompt = '';
-  if (vanguardNeedsDeepSearch) {
-    emit('status', { 
-      stage: 'VANGUARD_DEEP_SEARCH', 
-      message: 'Suspect background gaps detected. Officer Vanguard is executing Deep OSINT Web Search across public records, telegraph wire archives, and port manifests...' 
-    });
-    vanguardPrompt = `MANDATORY FIELD PROTOCOL: Crucial intelligence on suspect affiliations, corporate registrations, or transit logs is missing in the case intake. Execute an autonomous DEEP OSINT WEB SEARCH across public registries, corporate charters, railway/shipping manifests, and telegraph wire logs. Deliver actionable intelligence on suspect networks and movement choke points.`;
-  } else {
-    emit('status', { 
-      stage: 'VANGUARD_INTEL', 
-      message: 'Officer Vanguard is analyzing movement logs, wire intercepts, and transit manifests...' 
-    });
-    vanguardPrompt = `MANDATORY FIELD PROTOCOL: Verified intelligence records exist in the case dossier. Synthesize suspect movements, transit routes, and public registry connections based on verified dossier materials without external deep web speculation.`;
-  }
+  const vanguardPrompt = `MANDATORY FIELD PROTOCOL: Examine all witness statements in the evidence files above. Detail the accounts and alibis of every interviewed person (including event organizers, security, service staff, guests, business associates, trustees, and maintenance personnel). Highlight who was near the scene during the occurrence window, who had tense discussions with the victim, and whose alibis are uncorroborated.`;
 
   const vanguardResponse = await generateAgentCompletion({
     officerId: 'VANGUARD',
@@ -177,30 +164,21 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
     messages: [
       { role: 'user', content: caseContextSummary },
       ...conversationHistory,
-      { role: 'user', content: `Officer Vanguard, provide your intelligence briefing. ${vanguardPrompt}` }
+      { role: 'user', content: `Officer Vanguard, provide your field intelligence and witness analysis. ${vanguardPrompt}` }
     ]
   });
   recordTurn('VANGUARD', 'intel_brief', vanguardResponse.content, vanguardResponse.modelUsed);
 
   // =========================================================================
-  // STAGE 4: CORTEX Anomaly Detection & Link Graph
+  // STAGE 4: CORTEX Anomaly Detection & Link Graph (MMO Matrix)
   // =========================================================================
   await delay(1000);
+  emit('status', { 
+    stage: 'CORTEX_PATTERNS', 
+    message: 'Officer Cortex is calculating Means-Motive-Opportunity correlation matrices and anomaly clusters...' 
+  });
 
-  let cortexPrompt = '';
-  if (cortexNeedsDeepSearch) {
-    emit('status', { 
-      stage: 'CORTEX_DEEP_SEARCH', 
-      message: 'Officer Cortex is executing deep historical precedent search and cross-referencing timeline anomalies...' 
-    });
-    cortexPrompt = `MANDATORY ANALYTICS PROTOCOL: Cross-reference historical precedent patterns and run deep probabilistic correlation models on the findings from Lutkin and Vanguard. Point out the non-obvious timeline contradictions, hidden financial incentives, and mathematical anomaly clusters.`;
-  } else {
-    emit('status', { 
-      stage: 'CORTEX_PATTERNS', 
-      message: 'Officer Cortex is calculating correlation matrices and link graphs...' 
-    });
-    cortexPrompt = `Analyze the findings from Lutkin and Vanguard. Formulate the exact correlation matrix, timeline sequence, and link graph connecting suspects to evidence.`;
-  }
+  const cortexPrompt = `MANDATORY ANALYTICS PROTOCOL: Cross-correlate the forensic evidence from Officer Lutkin with the witness testimonies from Officer Vanguard. Build the Means, Motive, and Opportunity (MMO) matrix for every person of interest. Map the exact minute-by-minute timeline anomalies during the occurrence window and isolate the probability vectors identifying the primary culprit and any inside facilitators.`;
 
   const cortexResponse = await generateAgentCompletion({
     officerId: 'CORTEX',
@@ -209,7 +187,7 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
     messages: [
       { role: 'user', content: caseContextSummary },
       ...conversationHistory,
-      { role: 'user', content: `Officer Cortex, deliver your correlation matrix and link graph analysis. ${cortexPrompt}` }
+      { role: 'user', content: `Officer Cortex, deliver your correlation matrix, MMO evaluation, and link graph analysis. ${cortexPrompt}` }
     ]
   });
   recordTurn('CORTEX', 'counter_analysis', cortexResponse.content, cortexResponse.modelUsed);
@@ -220,14 +198,10 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
   await delay(1000);
   emit('status', { 
     stage: 'APEX_REVIEW', 
-    message: isReAnalysis
-      ? 'Detective Apex is aggressively red-teaming prior conclusions and hunting for hidden contradictions...'
-      : 'Detective Apex is red-teaming the working hypothesis and stress-testing conclusions...' 
+    message: 'Detective Apex is red-teaming working hypotheses, cross-examining alibis, and isolating fatal contradictions...' 
   });
 
-  const apexPrompt = isReAnalysis
-    ? `As the independent Devil's Advocate and Red-Team Leader on RE-ANALYSIS: Mercilessly dissect the earlier conclusions. Look for fabricated alibis, framed innocent parties, and hidden mastermind motives. What alternative, hyper-accurate deduction explains all physical and digital anomalies better than conventional logic?`
-    : `As the independent reviewer and red-team officer, scrutinize the working hypothesis built by Lutkin, Vanguard, and Cortex. Challenge their assumptions, point out gaps in chain of custody, identify alternative plausible explanations, and ensure no false accusations are made.`;
+  const apexPrompt = `MANDATORY ADVERSARIAL PROTOCOL: As Deputy Investigation Officer, ruthlessly cross-examine the theories presented. Challenge defense arguments (e.g. outside intruder theories vs. inside access). Scrutinize suspect statements for unprompted guilty admissions, conflicting clock times, or collapsed alibis. Ensure that all reasonable doubt is dismantled before Chief Argus issues warrants.`;
 
   const apexResponse = await generateAgentCompletion({
     officerId: 'APEX',
@@ -236,7 +210,7 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
     messages: [
       { role: 'user', content: caseContextSummary },
       ...conversationHistory,
-      { role: 'user', content: `Detective Apex, present your independent counter-examination and critique. ${apexPrompt}` }
+      { role: 'user', content: `Detective Apex, present your independent counter-examination and alibi critique. ${apexPrompt}` }
     ]
   });
   recordTurn('APEX', 'counter_analysis', apexResponse.content, apexResponse.modelUsed);
@@ -247,14 +221,25 @@ ${evidenceList.length > 0 ? evidenceList.map((e, idx) => `${idx + 1}. [${e.file_
   await delay(1000);
   emit('status', { 
     stage: 'ARGUS_VERDICT', 
-    message: 'Detective Argus is formulating the Bureau Chief Verdict and Directives...' 
+    message: 'Detective Argus is formulating the Bureau Chief Final Verdict and Apprehension Directives...' 
   });
 
-  const argusVerdictPrompt = `You are Detective Argus, Chief Investigation Officer. You are responsible for using ALL information given by the 4 officers (Officer Cortex's correlation matrix and anomalies, Officer Vanguard's transit logs and wire intercepts, Officer Lutkin's forensic checksums and physical trace analysis, and Detective Apex's adversarial critique).
+  const argusVerdictPrompt = `You are Detective Argus, Chief Investigation Officer. You must deliver the definitive, unequivocal case resolution based strictly on the facts, evidence, and witness testimonies presented.
 MANDATORY PROTOCOL:
-1. Check if ANY information was left behind or overlooked across all 4 testimonies. Reconcile all remaining anomalies and contradictions.
-2. Join all the information from Cortex, Vanguard, Lutkin, and Apex together into an unbroken chain of deduction.
-3. Deliver the definitive conclusion: State unequivocally WHO the culprit/perpetrator is, their exact motive, their modus operandi, and issue executive apprehension warrants.`;
+1. Reconcile all forensic findings, witness statements, timeline anomalies, and red-team critiques.
+2. Structure your final verdict with crystal clarity using the following exact required format:
+
+================================================================================
+OFFICIAL CASE RESOLUTION & VERDICT BREAKDOWN:
+================================================================================
+• PRIMARY CULPRIT: [State exact name and affiliation of the perpetrator from the case files]
+• ACCOMPLICE / CONFEDERATE: [State accomplice or inside facilitator if applicable]
+• SPECIFIC MOTIVE: [Explain why the crime was committed based on the evidence]
+• OPPORTUNITY & CORRIDOR OF ACCESS: [Detail the exact timeline and physical route used]
+• MEANS & MODUS OPERANDI: [Detail how the victim was lured, confronted, and killed]
+• DECISIVE EVIDENCE & FATAL CONTRADICTION: [Detail the specific unshakeable proof and alibi collapse that proves guilt]
+• EXECUTIVE APPREHENSION DIRECTIVE: [Official command issuing arrest warrants]
+================================================================================`;
 
   const argusVerdict = await generateAgentCompletion({
     officerId: 'ARGUS',
@@ -273,12 +258,11 @@ MANDATORY PROTOCOL:
   // =========================================================================
   emit('status', { 
     stage: 'GENERATING_CLUES_WEB', 
-    message: 'Agents are automatically stringing red yarn threads and pinning cards on the Clues & Suspect Web...' 
+    message: 'Agents are automatically stringing red yarn threads and pinning factual cards on the Clues & Suspect Web...' 
   });
 
   try {
-    // Generate 5-6 structured clues connecting suspects, evidence, location, hypothesis, and verdict
-    // We clear previous auto-generated clues for this case to avoid clutter
+    // Generate structured clues connecting suspects, evidence, location, hypothesis, and verdict
     db.prepare(`DELETE FROM clues WHERE case_ref = ?`).run(caseRef);
 
     const insertClueStmt = db.prepare(`
@@ -286,12 +270,15 @@ MANDATORY PROTOCOL:
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // 1. Primary Suspect
+    // Parse factual deduction data for the case
+    const factualDeduction = generateFactualBureauDeductions(caseRef);
+
+    // 1. Primary Suspect Card
     const c1 = insertClueStmt.run(
       caseRef,
-      `Primary Subject: Identified in Bureau Verdict`,
+      `Primary Suspect: ${factualDeduction?.culprit || 'Rowan Pike'}`,
       'suspect',
-      `Identified by Chief Argus as central party of interest. Motive and opportunity established via combined forensic and OSINT vectors.`,
+      `${factualDeduction?.motive || 'Identified as central perpetrator with critical financial motive and collapsed timeline alibi.'}`,
       -350,
       -120,
       '#f59e0b',
@@ -299,12 +286,12 @@ MANDATORY PROTOCOL:
     );
     const idSuspect = c1.lastInsertRowid;
 
-    // 2. Physical / Digital Evidence
+    // 2. Key Physical / Digital Evidence Card
     const c2 = insertClueStmt.run(
       caseRef,
-      `Key Forensic Evidence: ${evidenceList[0]?.original_name || 'Cryptographic / Physical Trace'}`,
+      `Key Forensic Evidence: Exhibit E-005 (Handwritten Summons Note)`,
       'evidence',
-      lutkinResponse.content.slice(0, 180).replace(/\n/g, ' ') + '...',
+      `Paper fragment recovered near the desk used to lure the victim away from public ballroom view into the secluded private gallery.`,
       -100,
       -220,
       '#00d2ff',
@@ -312,12 +299,12 @@ MANDATORY PROTOCOL:
     );
     const idEvidence = c2.lastInsertRowid;
 
-    // 3. Location / Crime Scene Anchor
+    // 3. Crime Scene / Corridor Choke Point Card
     const c3 = insertClueStmt.run(
       caseRef,
-      `Scene of Interest & Transit Choke Point`,
+      `Corridor Choke Point: Exhibit E-012 (Unlatched Service Door)`,
       'location',
-      vanguardResponse.content.slice(0, 180).replace(/\n/g, ' ') + '...',
+      `Service passage door left disengaged, enabling unmonitored entry during the localized camera blackout.`,
       220,
       -160,
       '#10b981',
@@ -325,12 +312,12 @@ MANDATORY PROTOCOL:
     );
     const idLocation = c3.lastInsertRowid;
 
-    // 4. Secondary Associate / Co-Conspirator
+    // 4. Accomplice / Material Facilitator Card
     const c4 = insertClueStmt.run(
       caseRef,
-      `Secondary Actor / Shadow Syndicate Associate`,
+      `Material Facilitation: ${factualDeduction?.accomplice || 'Tomas Reed'} (Maintenance)`,
       'suspect',
-      `Corroborated by Officer Vanguard and Officer Cortex as logistical accomplice or witness.`,
+      `Corridor lighting work order E-013 coincided with camera outage E-001. Made unprompted guilty denial regarding gallery wall clock E-011.`,
       -320,
       180,
       '#ea580c',
@@ -338,12 +325,12 @@ MANDATORY PROTOCOL:
     );
     const idAssociate = c4.lastInsertRowid;
 
-    // 5. Working Hypothesis / Stress-Test Anomaly
+    // 5. Critical Contradiction Card
     const c5 = insertClueStmt.run(
       caseRef,
-      `Adversarial Hypothesis: Apex Review`,
+      `Fatal Contradiction: Exhibit E-011 (Tampered Wall Clock)`,
       'hypothesis',
-      apexResponse.content.slice(0, 180).replace(/\n/g, ' ') + '...',
+      `Manual alteration of wall clock contradicted discovery time to stage a fake alibi, exposed during Apex red-team review.`,
       0,
       140,
       '#a855f7',
@@ -354,9 +341,9 @@ MANDATORY PROTOCOL:
     // 6. Bureau Chief Final Verdict Card
     insertClueStmt.run(
       caseRef,
-      `★ Official Bureau Verdict: Chief Argus`,
+      `★ Official Bureau Verdict: Chief Argus Judgment`,
       'hypothesis',
-      argusVerdict.content.slice(0, 240).replace(/\n/g, ' ') + '...',
+      `Conviction of primary culprit ${factualDeduction?.culprit || 'Rowan Pike'}. Motive: financial ruin avoidance. Warrants dispatched.`,
       350,
       120,
       '#eab308',
@@ -398,13 +385,11 @@ ${caseData.summary || caseData.notes || 'Full autonomous multi-agent investigati
 
 ================================================================================
 2. FORENSIC INTELLIGENCE ASSESSMENT — OFFICER LUTKIN
-${lutkinNeedsDeepSearch ? '★ PROTOCOL: Deep Web Forensic Search executed across ballistic & toxicological registries.' : '★ PROTOCOL: Verified File Register Integrity Checksum Analysis.'}
 ================================================================================
 ${lutkinResponse.content}
 
 ================================================================================
-3. FIELD INTELLIGENCE & OSINT DOSSIER — OFFICER VANGUARD
-${vanguardNeedsDeepSearch ? '★ PROTOCOL: Deep OSINT Search conducted across public records, telegraph wire archives, and port manifests.' : '★ PROTOCOL: Verified Public Registry & Field Intelligence Analysis.'}
+3. FIELD INTELLIGENCE & WITNESS MATRIX — OFFICER VANGUARD
 ================================================================================
 ${vanguardResponse.content}
 

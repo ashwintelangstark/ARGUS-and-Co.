@@ -19,7 +19,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'PROBABILITY MATRICES & ANOMALY CORRELATION',
     specialty: 'Algorithmic correlation of transaction timelines, anomaly vectors, and relational suspect graphs.',
     defaultText: (caseTitle, clueCount) => 
-      `Attention Bureau officers. I have cross-calculated the probability vectors across all ${clueCount || 5} nodes for case "${caseTitle}". Anomaly indices indicate non-random coordination across the transaction timelines with a 94.2% correlation. The relational link graph confirms our primary suspects intersected at the telegraph terminal prior to the reported incident.`
+      `Attention Bureau officers. I have calculated the Means, Motive, and Opportunity correlation matrix across the evidence register for "${caseTitle}". Anomaly indices indicate non-random coordination across the timeline with a 98.4% probability of premeditated execution. The relational link graph confirms our primary suspect used the corridor maintenance interval to access the scene unseen.`
   },
   {
     id: 'VANGUARD',
@@ -28,10 +28,10 @@ const OFFICERS_ORDER = [
     badge: 'INTEL & OSINT',
     avatar: '/avatars/vanguard.png',
     accent: '#f97316',
-    cadenceTag: 'FIELD OPERATIONS & WIRE INTERCEPT VECTORS',
-    specialty: 'Public manifests, wiretap intercepts, transit logs, syndicate entities, and field reconnaissance.',
+    cadenceTag: 'FIELD OPERATIONS & WITNESS INTERVIEWS',
+    specialty: 'Witness statements, movement timelines, corridor surveillance, and transit routes.',
     defaultText: (caseTitle) => 
-      `Vanguard here from field ops. Public registries, shipping manifests, and wire intercepts confirm suspect movements matching Cortex's anomaly vectors. We tracked transit coordinates across the district boundary where an unscheduled cargo crate was cleared. The ciphered telegraph ribbons directly corroborate the presence of unauthorized operatives on site.`
+      `Officer Vanguard reporting from the field. Cross-referencing all witness statements for "${caseTitle}" reveals an immediate alibi collapse. While business associate Rowan Pike claims he was among guests, he cannot name a single witness during the critical reception interval. Meanwhile, Trustee Celeste Hart placed a figure matching his stature at the private corridor entrance.`
   },
   {
     id: 'LUTKIN',
@@ -40,10 +40,10 @@ const OFFICERS_ORDER = [
     badge: 'FORENSICS',
     avatar: '/avatars/lutkin.png',
     accent: '#00d2ff',
-    cadenceTag: 'DIGITAL HASHES & CHEMICAL FORGERY FORENSICS',
-    specialty: 'Cryptographic SHA-256 verification, microscopic tool mark analysis, and ink chromatography.',
+    cadenceTag: 'DIGITAL HASHES & PHYSICAL FORENSICS',
+    specialty: 'Cryptographic SHA-256 verification, tool mark analysis, and physical exhibit forensics.',
     defaultText: (caseTitle) => 
-      `Forensics division reporting. Cryptographic SHA-256 hashes on all intake artifacts have been verified with zero byte tampering. Microscopic tool mark analysis on the security latch proves the locking tumblers were operated from within using an authentic supervisor master key with zero forced entry, and document ink chromatography proves the register signatures were chemically forged.`
+      `Forensics division reporting. Examination of physical exhibits for "${caseTitle}" proves unforced interior entry. Exhibit E-012 shows the service door latch was left disengaged, coinciding with camera recording gap E-001. Most critically, Exhibit E-011—the gallery wall clock—was manually altered to stage a false time of death, and summons note E-005 lured the victim into isolation.`
   },
   {
     id: 'APEX',
@@ -55,7 +55,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'ADVERSARIAL STRESS-TEST & RED-TEAM AUDIT',
     specialty: 'Contrarian hypothesis testing, confirmation bias defense, and adversarial scrutiny.',
     defaultText: (caseTitle) => 
-      `Hold your horses, squad. As deputy reviewer, I cross-examined every working theory. I challenged whether the courier was being framed as a decoy, and stress-tested the timeline against defense counsel objections. The defense claims an outsider breached the perimeter, but the master key markings and altered night patrol logs prove the inside job hypothesis holds water!`
+      `As Deputy Review Officer, I cross-examined every alibi for "${caseTitle}". An outside intruder theory fails completely because all exterior entrances were guarded. Look at maintenance technician Tomas Reed's statement: unprompted, he denied touching the gallery wall clock before investigators even mentioned it! That guilty knowledge destroys their defense.`
   },
   {
     id: 'ARGUS',
@@ -67,7 +67,7 @@ const OFFICERS_ORDER = [
     cadenceTag: 'CHIEF VERDICT & CULPRIT APPREHENSION DIRECTIVE',
     specialty: 'Synthesis of all 4 investigative branches, auditing for omitted clues, and definitive case closure.',
     defaultText: (caseTitle) => 
-      `As Chief Investigation Officer, I have evaluated all evidence presented by my four specialists. First, auditing for any overlooked information: every clock skew, wire intercept frequency, lock tumbler mark, and financial cluster has been accounted for. No detail was left behind. By joining all four intelligence vectors, the conclusion of ARGUS and Co. is definitive: the primary culprit behind "${caseTitle}" is the trusted inside supervisor acting in premeditated conspiracy with the external courier! Their motive was financial liquidation prior to audit. Executive apprehension warrants are hereby dispatched. Case officially resolved!`
+      `As Chief Investigation Officer, I have evaluated all empirical evidence and testimonies for "${caseTitle}". The conclusion of ARGUS and Co. is definitive and proven beyond reasonable doubt: the primary culprit is Rowan Pike, with maintenance technician Tomas Reed as inside facilitator! Pike acted to silence Adrian Vale before the gala announcement exposed his financial liabilities. Executive apprehension warrants are hereby dispatched. Case officially solved!`
   }
 ];
 
@@ -335,6 +335,16 @@ export default function CasePresentationModal({
                       <strong className="text-[#3b2312]">{caseRef}</strong>
                     </div>
                   </div>
+
+                  {/* Officer Stage Header Badge */}
+                  {safeStep === 4 && (
+                    <div className="mb-2 px-3 py-1.5 rounded bg-[#ebd2a0] border border-[#b88c4d] text-[#24170f] flex items-center justify-between shadow-sm">
+                      <span className="font-rye text-xs font-bold text-[#422511]">★ BUREAU VERDICT: PRIMARY CULPRIT UNMASKED</span>
+                      <span className="text-[10px] font-elite font-bold px-2 py-0.5 rounded bg-[#f59e0b] text-[#1a0f07] shadow-sm">
+                        ROWAN PIKE
+                      </span>
+                    </div>
+                  )}
 
                   {/* Testimony Body Text in Typewriter Style */}
                   <div className="text-sm sm:text-base font-elite font-normal leading-relaxed text-[#23150c] whitespace-pre-wrap max-h-[220px] overflow-y-auto pr-2 scrollbar-thin">
