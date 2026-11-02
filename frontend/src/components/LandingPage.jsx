@@ -114,6 +114,7 @@ export default function LandingPage({ onEnterAgency }) {
   const [selectedDetectiveIndex, setSelectedDetectiveIndex] = useState(0);
   const [speakingOfficerId, setSpeakingOfficerId] = useState(null);
   const [showSubtitles, setShowSubtitles] = useState(false);
+  const [viewMode, setViewMode] = useState('slide'); // 'slide' | 'all'
 
   // Coin 3D Physics & Mouse Rotation State
   const animFrameRef = useRef(null);
@@ -489,168 +490,206 @@ export default function LandingPage({ onEnterAgency }) {
                 <div className="eyebrow">THE INVESTIGATIVE UNIT · SPECIALIST DOSSIERS</div>
                 <h2>Meet the detectives.</h2>
               </div>
-              <p>Five officers, five disciplines—from evidence intake to independent review. Select a detective below to view their full vertical dossier and hear their voice self-introduction.</p>
+              <p>Five officers, five disciplines—from evidence intake to independent review. Select a detective below to view their full landscape dossier and hear their voice self-introduction.</p>
             </div>
 
-            {/* Detective Selector Tab Bar */}
-            <div className="detective-tabs" role="tablist">
-              {DETECTIVES.map((det, idx) => {
-                const isActive = idx === selectedDetectiveIndex;
-                const isSpeakingThis = speakingOfficerId === det.id;
-                return (
-                  <button
-                    key={det.id}
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => handleSelectDetective(idx)}
-                    className={`detective-tab-btn ${isActive ? 'active' : ''}`}
-                    style={isActive ? { borderColor: det.accentColor } : {}}
-                  >
+            {/* View Mode Switcher */}
+            <div className="detective-view-switcher">
+              <button 
+                className={`view-switch-btn ${viewMode === 'slide' ? 'active' : ''}`}
+                onClick={() => {
+                  bureauAudio.typewriterClick();
+                  setViewMode('slide');
+                }}
+              >
+                <span>SLIDE VIEW (1 OF 5)</span>
+              </button>
+              <button 
+                className={`view-switch-btn ${viewMode === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  bureauAudio.typewriterClick();
+                  setViewMode('all');
+                }}
+              >
+                <span>VERTICAL DECK (ALL 5 AGENTS)</span>
+              </button>
+            </div>
+
+            {/* Detective Selector Tab Bar (Shown in Slide Mode) */}
+            {viewMode === 'slide' && (
+              <div className="detective-tabs" role="tablist">
+                {DETECTIVES.map((det, idx) => {
+                  const isActive = idx === selectedDetectiveIndex;
+                  const isSpeakingThis = speakingOfficerId === det.id;
+                  return (
+                    <button
+                      key={det.id}
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => handleSelectDetective(idx)}
+                      className={`detective-tab-btn ${isActive ? 'active' : ''}`}
+                      style={isActive ? { borderColor: det.accentColor } : {}}
+                    >
+                      <img 
+                        src={det.image} 
+                        alt={det.name} 
+                        className="detective-tab-thumb"
+                        style={isActive ? { borderColor: det.accentColor } : {}}
+                      />
+                      <span>{det.name}</span>
+                      {isSpeakingThis && (
+                        <span style={{ color: det.accentColor, fontSize: '11px', animation: 'speechPulse 0.6s infinite alternate' }}>
+                          🔊
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Render Detective Cards (Single Slide or All 5 Vertical Deck) */}
+            {(viewMode === 'slide' ? [currentDetective] : DETECTIVES).map((det, dIndex) => {
+              const isSpeakingThis = speakingOfficerId === det.id;
+              const isSingleSlide = viewMode === 'slide';
+
+              return (
+                <div className="detective-slide-card" key={det.id}>
+                  {/* Full-Scale Landscape Cinematic Artwork Stage */}
+                  <div className="detective-landscape-stage">
                     <img 
                       src={det.image} 
                       alt={det.name} 
-                      className="detective-tab-thumb"
-                      style={isActive ? { borderColor: det.accentColor } : {}}
+                      className="detective-landscape-img"
                     />
-                    <span>{det.name}</span>
-                    {isSpeakingThis && (
-                      <span style={{ color: det.accentColor, fontSize: '11px', animation: 'speechPulse 0.6s infinite alternate' }}>
-                        🔊
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Active Vertical Detective Slide Card */}
-            <div className="detective-slide-card" key={currentDetective.id}>
-              {/* Column 1: Full-Scale Portrait */}
-              <div className="detective-portrait-col">
-                <img 
-                  src={currentDetective.image} 
-                  alt={currentDetective.name} 
-                  className="detective-portrait-img"
-                />
-                <div className="detective-portrait-overlay"></div>
-                
-                <div className="detective-portrait-badge">
-                  <span>{currentDetective.badge}</span>
-                  <span style={{ color: currentDetective.accentColor }}>★ ACTIVE</span>
-                </div>
-              </div>
-
-              {/* Column 2: Detailed Dossier & Voice Introduction */}
-              <div className="detective-info-col">
-                <div>
-                  <div 
-                    className="detective-badge-tag"
-                    style={{ 
-                      background: `rgba(35, 22, 13, 0.9)`, 
-                      border: `1px solid ${currentDetective.accentColor}`,
-                      color: currentDetective.accentColor
-                    }}
-                  >
-                    <Award size={13} />
-                    <span>{currentDetective.badge}</span>
-                  </div>
-
-                  <h3 className="detective-name">{currentDetective.name}</h3>
-                  <div className="detective-title">{currentDetective.rank}</div>
-
-                  <div className="detective-quote">
-                    "{currentDetective.quote}"
-                  </div>
-
-                  {/* Introduce Yourself Voice Button */}
-                  <div className="detective-speech-bar">
-                    <button
-                      onClick={() => handleToggleSpeech(currentDetective)}
-                      className={`speech-trigger-btn ${speakingOfficerId === currentDetective.id ? 'speaking' : ''}`}
-                      title="Listen to this detective introduce themselves with custom voice synthesis"
-                    >
-                      {speakingOfficerId === currentDetective.id ? (
-                        <>
-                          <VolumeX size={16} />
-                          <span>STOP INTRODUCTION</span>
-                        </>
-                      ) : (
-                        <>
-                          <Volume2 size={16} />
-                          <span>INTRODUCE YOURSELF 🎙️</span>
-                        </>
-                      )}
-                    </button>
-
-                    {speakingOfficerId === currentDetective.id && (
-                      <div className="speech-wave-indicator" aria-label="Audio active">
-                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
-                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
-                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
-                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
-                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Live Spoken Subtitle Teleprompter */}
-                  {(speakingOfficerId === currentDetective.id || showSubtitles) && (
-                    <div 
-                      className="speech-subtitles-box"
-                      style={{ borderLeft: `3px solid ${currentDetective.accentColor}` }}
-                    >
-                      <div style={{ color: currentDetective.accentColor, fontSize: '10px', letterSpacing: '2px', marginBottom: '4px' }}>
-                        LIVE SPOKEN INTRODUCTION · TELEGRAPH AUDIO CADENCE
-                      </div>
-                      "{currentDetective.speechText}"
+                    <div className="detective-landscape-badge">
+                      <span>{det.badge}</span>
+                      <span style={{ color: det.accentColor }}>★ ACTIVE OPERATIVE</span>
                     </div>
-                  )}
-
-                  {/* Detailed Bio */}
-                  <div className="detective-bio">
-                    {currentDetective.bio}
                   </div>
 
-                  {/* Key Specialties Grid */}
-                  <div className="detective-specialties-label">
-                    CORE INVESTIGATIVE CAPABILITIES &amp; SPECIALTIES:
-                  </div>
-                  <div className="detective-specialties-grid">
-                    {currentDetective.specialties.map((spec, sIdx) => (
-                      <span 
-                        key={sIdx} 
-                        className="detective-specialty-pill"
-                        style={{ borderLeft: `2px solid ${currentDetective.accentColor}` }}
-                      >
-                        • {spec}
-                      </span>
-                    ))}
+                  {/* Comprehensive Dossier & Voice Introduction */}
+                  <div className="detective-dossier-body">
+                    <div className="detective-dossier-top">
+                      {/* Left Column: Command Identity & Speech Synthesis */}
+                      <div className="detective-profile-pane">
+                        <div 
+                          className="detective-badge-tag"
+                          style={{ 
+                            background: `rgba(35, 22, 13, 0.9)`, 
+                            border: `1px solid ${det.accentColor}`,
+                            color: det.accentColor
+                          }}
+                        >
+                          <Award size={13} />
+                          <span>{det.badge}</span>
+                        </div>
+
+                        <h3 className="detective-name">{det.name}</h3>
+                        <div className="detective-title">{det.rank}</div>
+
+                        <div className="detective-quote">
+                          "{det.quote}"
+                        </div>
+
+                        {/* Introduce Yourself Voice Button */}
+                        <div className="detective-speech-bar">
+                          <button
+                            onClick={() => handleToggleSpeech(det)}
+                            className={`speech-trigger-btn ${isSpeakingThis ? 'speaking' : ''}`}
+                            title="Listen to this detective introduce themselves with custom voice synthesis"
+                          >
+                            {isSpeakingThis ? (
+                              <>
+                                <VolumeX size={16} />
+                                <span>STOP INTRODUCTION</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 size={16} />
+                                <span>INTRODUCE YOURSELF 🎙️</span>
+                              </>
+                            )}
+                          </button>
+
+                          {isSpeakingThis && (
+                            <div className="speech-wave-indicator" aria-label="Audio active">
+                              <div className="speech-bar" style={{ background: det.accentColor }}></div>
+                              <div className="speech-bar" style={{ background: det.accentColor }}></div>
+                              <div className="speech-bar" style={{ background: det.accentColor }}></div>
+                              <div className="speech-bar" style={{ background: det.accentColor }}></div>
+                              <div className="speech-bar" style={{ background: det.accentColor }}></div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Live Spoken Subtitle Teleprompter */}
+                        {(isSpeakingThis || (showSubtitles && (isSingleSlide || speakingOfficerId === det.id))) && (
+                          <div 
+                            className="speech-subtitles-box"
+                            style={{ borderLeft: `3px solid ${det.accentColor}` }}
+                          >
+                            <div style={{ color: det.accentColor, fontSize: '10px', letterSpacing: '2px', marginBottom: '4px' }}>
+                              LIVE SPOKEN INTRODUCTION · TELEGRAPH AUDIO CADENCE
+                            </div>
+                            "{det.speechText}"
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Column: Operational Intel & Specialties */}
+                      <div className="detective-intel-pane">
+                        <div className="dossier-subhead">
+                          OPERATIONAL DOSSIER &amp; BACKGROUND
+                        </div>
+                        <div className="detective-bio">
+                          {det.bio}
+                        </div>
+
+                        <div className="dossier-subhead" style={{ marginTop: '20px' }}>
+                          CORE CAPABILITIES &amp; SPECIALTIES
+                        </div>
+                        <div className="detective-specialties-grid">
+                          {det.specialties.map((spec, sIdx) => (
+                            <span 
+                              key={sIdx} 
+                              className="detective-specialty-pill"
+                              style={{ borderLeft: `3px solid ${det.accentColor}` }}
+                            >
+                              • {spec}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Slide Footer Navigation Controls (shown in Slide View) */}
+                    {isSingleSlide && (
+                      <div className="detective-slide-footer">
+                        <div>
+                          OPERATIVE DOSSIER SLIDE <strong>{det.indexStr}</strong> OF <strong>05</strong>
+                        </div>
+
+                        <div className="slide-nav-arrows">
+                          <button
+                            className="slide-arrow-btn"
+                            onClick={() => handleSelectDetective((selectedDetectiveIndex - 1 + DETECTIVES.length) % DETECTIVES.length)}
+                          >
+                            ← PREVIOUS
+                          </button>
+                          <button
+                            className="slide-arrow-btn"
+                            onClick={() => handleSelectDetective((selectedDetectiveIndex + 1) % DETECTIVES.length)}
+                          >
+                            NEXT DETECTIVE →
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Slide Footer Navigation Controls */}
-                <div className="detective-slide-footer">
-                  <div>
-                    OPERATIVE SLIDE <strong>{currentDetective.indexStr}</strong> OF <strong>05</strong>
-                  </div>
-
-                  <div className="slide-nav-arrows">
-                    <button
-                      className="slide-arrow-btn"
-                      onClick={() => handleSelectDetective((selectedDetectiveIndex - 1 + DETECTIVES.length) % DETECTIVES.length)}
-                    >
-                      ← PREVIOUS
-                    </button>
-                    <button
-                      className="slide-arrow-btn"
-                      onClick={() => handleSelectDetective((selectedDetectiveIndex + 1) % DETECTIVES.length)}
-                    >
-                      NEXT DETECTIVE →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </section>
 

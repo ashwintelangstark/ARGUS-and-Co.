@@ -110,10 +110,42 @@ html{scroll-behavior:smooth;scroll-padding-top:90px}
   border: 1px solid #d5a45b;
 }
 
+.detective-view-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.view-switch-btn {
+  background: rgba(28, 16, 9, 0.7);
+  border: 1px solid #78502c;
+  color: #bfa37c;
+  padding: 8px 18px;
+  font-family: 'Special Elite', monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-switch-btn:hover {
+  border-color: #d5a45b;
+  color: #fff;
+  background: #3e2615;
+}
+
+.view-switch-btn.active {
+  background: linear-gradient(135deg, #4b2d1d, #2d180b);
+  border-color: #d5a45b;
+  color: #ffe6ba;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+}
+
 .detective-slide-card {
-  display: grid;
-  grid-template-columns: 460px 1fr;
-  gap: 36px;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(135deg, #25170d, #140b06 80%);
   border: 2px solid #8b623b;
   outline: 1px solid rgba(213, 164, 91, 0.25);
@@ -122,65 +154,93 @@ html{scroll-behavior:smooth;scroll-padding-top:90px}
   border-radius: 4px;
   overflow: hidden;
   transition: all 0.35s ease;
-  padding: 28px;
+  padding: 26px;
+  margin-bottom: 32px;
 }
 
-.detective-portrait-col {
+/* Full Landscape Cinematic Stage */
+.detective-landscape-stage {
   position: relative;
-  height: 530px;
+  width: 100%;
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid #a37a43;
   box-shadow: 0 15px 35px rgba(0,0,0,0.7), inset 0 0 30px rgba(0,0,0,0.8);
-  background: #0f0804;
+  background: #080402;
+  margin-bottom: 24px;
 }
 
-.detective-portrait-img {
+.detective-landscape-img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 10%;
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  height: auto;
   display: block;
+  aspect-ratio: 1672 / 941;
+  object-fit: contain;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.detective-portrait-col:hover .detective-portrait-img {
-  transform: scale(1.04);
+.detective-landscape-stage:hover .detective-landscape-img {
+  transform: scale(1.015);
 }
 
-.detective-portrait-overlay {
+.detective-landscape-badge {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(16, 9, 5, 0.92) 0%, rgba(16, 9, 5, 0.15) 50%, rgba(0,0,0,0.3) 100%);
-  pointer-events: none;
-}
-
-.detective-portrait-badge {
-  position: absolute;
-  bottom: 18px;
-  left: 18px;
-  right: 18px;
-  background: rgba(22, 13, 7, 0.85);
+  bottom: 14px;
+  right: 16px;
+  background: rgba(18, 10, 5, 0.88);
   backdrop-filter: blur(8px);
   border: 1px solid #8b623b;
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-radius: 2px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.detective-portrait-badge span {
+  gap: 12px;
   font-family: 'Special Elite', monospace;
   font-size: 11px;
   letter-spacing: 2px;
   color: #d5a45b;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
 
-.detective-info-col {
+/* Comprehensive Dossier & Voice Introduction Body */
+.detective-dossier-body {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 18px;
+}
+
+.detective-dossier-top {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.detective-profile-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+.detective-intel-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+.dossier-subhead {
+  font-family: 'Special Elite', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #c99a53;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dossier-subhead::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(139, 98, 59, 0.3);
 }
 
 .detective-badge-tag {
@@ -370,19 +430,20 @@ html{scroll-behavior:smooth;scroll-padding-top:90px}
   color: #fff;
 }
 
-@media(max-width: 1000px) {
-  .detective-slide-card {
+@media(max-width: 950px) {
+  .detective-dossier-top {
     grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 20px;
-  }
-  .detective-portrait-col {
-    height: 380px;
+    gap: 22px;
   }
 }
 @media(max-width: 650px) {
-  .detective-portrait-col {
-    height: 300px;
+  .detective-slide-card {
+    padding: 16px;
+  }
+  .detective-landscape-badge {
+    position: static;
+    margin-top: 8px;
+    justify-content: center;
   }
   .detective-tabs {
     gap: 8px;
@@ -390,6 +451,10 @@ html{scroll-behavior:smooth;scroll-padding-top:90px}
   .detective-tab-btn {
     padding: 8px 12px;
     font-size: 11px;
+  }
+  .view-switch-btn {
+    padding: 6px 12px;
+    font-size: 10px;
   }
 }
 
