@@ -159,50 +159,38 @@ export default function ReportsView({
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#100d0a]">
-      
-      {/* Header */}
-      <div className="flex-none p-4 bg-gradient-to-r from-[#21140c] via-[#170e09] to-[#21140c] border-b-2 border-[#b1844c] flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <div>
-          <h1 className="font-rye text-xl md:text-2xl text-[#f0d9ad] tracking-wide">
-            Classified Bureau Reports & Findings Desk
-          </h1>
-          <p className="font-elite text-xs text-[#bda47b] mt-0.5">
-            Review certified multi-agent investigation dossiers, forensic findings, and executive verdicts.
-          </p>
-        </div>
-
-        {/* Case Selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-elite text-[#d6bd94] font-bold">CASE DOSSIER:</label>
-          <select
-            value={selectedCaseRef}
-            onChange={(e) => setSelectedCaseRef(e.target.value)}
-            className="p-1.5 px-3 bg-[#f5e9cf] text-[#24170f] font-elite text-xs border border-[#9b7b50] rounded focus:outline-none"
-          >
-            {cases.map((c) => (
-              <option key={c.case_ref} value={c.case_ref}>
-                {c.case_ref} — {c.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 print:p-0 print:overflow-visible">
         
         {/* Controls Bar */}
         <div className="vintage-card p-4 rounded flex flex-wrap items-center justify-between gap-3 print:hidden">
-          <div className="flex items-center gap-2">
-            <FileText size={18} className="text-[#8d4829]" />
-            <span className="font-rye text-sm text-[#3b2413]">
-              {activeReport ? activeReport.title : `No compiled report for ${selectedCaseRef}`}
-            </span>
-            {activeCaseObj?.status === 'Solved' && (
-              <span className="text-[10px] font-elite px-2 py-0.5 rounded bg-green-900 text-green-100 font-bold border border-green-600">
-                ✓ ARCHIVED & SOLVED
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-elite text-[#8d4829] font-bold">CASE DOSSIER:</label>
+              <select
+                value={selectedCaseRef}
+                onChange={(e) => setSelectedCaseRef(e.target.value)}
+                className="p-1 px-2.5 bg-[#f5e9cf] text-[#24170f] font-elite text-xs border border-[#9b7b50] rounded focus:outline-none"
+              >
+                {cases.map((c) => (
+                  <option key={c.case_ref} value={c.case_ref}>
+                    {c.case_ref} — {c.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 pl-3 border-l border-[#9c764e]/50">
+              <FileText size={16} className="text-[#8d4829]" />
+              <span className="font-rye text-xs text-[#3b2413] truncate max-w-[280px]">
+                {activeReport ? activeReport.title : `No compiled report yet`}
               </span>
-            )}
+              {activeCaseObj?.status === 'Solved' && (
+                <span className="text-[9px] font-elite px-2 py-0.5 rounded bg-green-900 text-green-100 font-bold border border-green-600">
+                  ✓ ARCHIVED & SOLVED
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

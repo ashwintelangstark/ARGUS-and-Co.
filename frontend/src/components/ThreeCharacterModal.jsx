@@ -71,10 +71,13 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
   // Initialize initial greeting
   useEffect(() => {
     bureauAudio.biometricScanHum();
+    const caseGreeting = activeCaseRef 
+      ? `I am ${currentAgent.name}. I am actively investigating Case [${activeCaseRef}]. Interrogate me on any evidence, suspect alibi, clue, or tactical directive.`
+      : currentAgent.greeting;
     setChatMessages([
-      { role: 'assistant', content: currentAgent.greeting }
+      { role: 'assistant', content: caseGreeting }
     ]);
-  }, [agentId]);
+  }, [agentId, activeCaseRef]);
 
   // Setup 3D Scene for Character Inspector
   useEffect(() => {
@@ -220,11 +223,10 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
   };
 
   // Interrogation Chat send
-  const handleSendMessage = async (e) => {
-    e?.preventDefault();
-    if (!inputMessage.trim() || isThinking) return;
+  const executeSendMessage = async (textToSend) => {
+    if (!textToSend || isThinking) return;
 
-    const userText = inputMessage.trim();
+    const userText = textToSend.trim();
     setInputMessage('');
     bureauAudio.typewriterClick();
 
@@ -258,20 +260,31 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
       } else {
         setChatMessages(prev => [
           ...prev,
-          { role: 'assistant', content: 'Connection temporarily disrupted. Repeating statement.' }
+          { role: 'assistant', content: data.error || 'Connection temporarily disrupted. Repeating statement.' }
         ]);
       }
     } catch (err) {
       console.error('Chat error:', err);
       setChatMessages(prev => [
         ...prev,
-        { role: 'assistant', content: `[${currentAgent.name}]: I hear you, but the telegraph wire dropped packet. Let me state my operational position again.` }
+        { role: 'assistant', content: `[${currentAgent.name}]: Telegraph connection disrupted. Let me state my findings on this case again.` }
       ]);
     } finally {
       setIsThinking(false);
       // Keep speaking animation for 1.5 seconds longer as voice winds down
       setTimeout(() => setIsSpeaking(false), 1600);
     }
+  };
+
+  const handleSendMessage = (e) => {
+    e?.preventDefault();
+    if (!inputMessage.trim() || isThinking) return;
+    executeSendMessage(inputMessage);
+  };
+
+  const handleQuickQuestion = (promptText) => {
+    if (isThinking) return;
+    executeSendMessage(promptText);
   };
 
   return (
@@ -433,6 +446,28 @@ export default function ThreeCharacterModal({ agentId, onClose, activeCaseRef = 
                 <span>{currentAgent.name} is deducing findings...</span>
               </div>
             )}
+          </div>
+
+          {/* Quick Prompts Chip Carousel */}
+          <div className="px-3 py-1.5 bg-[#170f09] border-t border-[#462d19] flex items-center gap-1.5 overflow-x-auto text-[10px] font-elite scrollbar-none">
+            <span className="text-[#8d6c44] flex-shrink-0 text-[9px] uppercase tracking-wider">Ask:</span>
+            {[
+              "What is your theory on this case?",
+              "Who is our prime suspect?",
+              "What does the evidence prove?",
+              "What is our weakest link?",
+              "What is our next move?"
+            ].map((prompt, pIdx) => (
+              <button
+                key={pIdx}
+                type="button"
+                onClick={() => handleQuickQuestion(prompt)}
+                disabled={isThinking}
+                className="whitespace-nowrap px-2 py-0.5 rounded bg-[#24150b] border border-[#6b4728] text-[#cbb085] hover:text-[#fff] hover:border-[#d5a45b] transition-colors flex-shrink-0"
+              >
+                {prompt}
+              </button>
+            ))}
           </div>
 
           {/* Interrogation Input Form */}

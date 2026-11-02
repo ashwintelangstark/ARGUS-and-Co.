@@ -2,15 +2,26 @@
   "name": "argus-and-co",
   "version": "1.0.0",
   "description": "ARGUS and Co. — AI Agents Based Investigation Agency with Ultra-Realistic 3D Experience",
+  "type": "module",
   "scripts": {
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "cd frontend && npm run build",
+    "build": "cd frontend && npm install && npm run build",
     "start": "cd backend && npm start",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
   },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^10.3.1"
+  },
   "devDependencies": {
     "concurrently": "^10.0.6"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

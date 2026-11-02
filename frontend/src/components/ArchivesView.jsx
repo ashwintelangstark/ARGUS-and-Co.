@@ -54,22 +54,6 @@ export default function ArchivesView({ cases = [], onSelectCase, onRefresh }) {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#100d0a]">
-      
-      {/* Header */}
-      <div className="flex-none p-4 bg-gradient-to-r from-[#21140c] via-[#170e09] to-[#21140c] border-b-2 border-[#b1844c] flex items-center justify-between">
-        <div>
-          <h1 className="font-rye text-xl md:text-2xl text-[#f0d9ad] tracking-wide">
-            Agency Archives & Chain of Custody Ledger
-          </h1>
-          <p className="font-elite text-xs text-[#bda47b] mt-0.5">
-            Historical case dossiers, immutable audit records, and officer operational activity.
-          </p>
-        </div>
-        <span className="badge px-3 py-1 bg-[#5b3922] border border-[#a17849] text-[#f4dfb6] font-elite text-xs">
-          {cases.length} HISTORICAL RECORDS
-        </span>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         

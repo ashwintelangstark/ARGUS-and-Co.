@@ -24,6 +24,15 @@ const PORT = process.env.PORT || 5001;
 initDatabase();
 
 app.use(cors());
+
+// Ensure Vercel serverless request path prefix compatibility
+app.use((req, res, next) => {
+  if (req.url && !req.url.startsWith('/api') && !req.url.startsWith('/uploads') && !req.url.startsWith('/assets') && !req.url.startsWith('/avatars')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
+  next();
+});
+
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
@@ -844,32 +853,67 @@ app.post('/api/interrogate', async (req, res) => {
 
     const profile = AGENT_PROFILES[officerId] || AGENT_PROFILES.ARGUS;
 
+    // Resolve target active case
+    let targetCaseRef = caseRef;
+    if (!targetCaseRef) {
+      const latest = db.prepare('SELECT case_ref FROM cases ORDER BY updated_at DESC LIMIT 1').get();
+      if (latest) targetCaseRef = latest.case_ref;
+    }
+
     let caseContext = '';
-    if (caseRef) {
-      const caseItem = db.prepare('SELECT * FROM cases WHERE case_ref = ?').get(caseRef);
+    let caseItem = null;
+    if (targetCaseRef) {
+      caseItem = db.prepare('SELECT * FROM cases WHERE case_ref = ?').get(targetCaseRef);
       if (caseItem) {
-        const evidence = db.prepare('SELECT original_name, file_type, forensic_notes FROM evidence WHERE case_ref = ?').all(caseRef);
-        caseContext = `\nACTIVE CASE CONTEXT: "${caseItem.title}" (${caseItem.case_ref})\nNotes: ${caseItem.notes}\nEvidence: ${evidence.map(e => `${e.original_name} (${e.file_type})`).join(', ')}`;
+        const evidence = db.prepare('SELECT original_name, file_type, forensic_notes, extracted_text FROM evidence WHERE case_ref = ?').all(targetCaseRef);
+        const clues = db.prepare('SELECT title, description, category, suspect FROM clues WHERE case_ref = ?').all(targetCaseRef);
+        const deliberations = db.prepare('SELECT officer_name, message FROM deliberations WHERE case_ref = ? ORDER BY created_at DESC LIMIT 4').all(targetCaseRef);
+
+        caseContext = `
+ACTIVE CASE UNDER INVESTIGATION:
+- Dossier Reference: ${caseItem.case_ref}
+- Title: ${caseItem.title}
+- Priority: ${caseItem.priority || 'High'} | Status: ${caseItem.status || 'Active'}
+- Case Notes & Summary: ${caseItem.notes || caseItem.summary || 'Under active multi-agent investigation.'}
+- Forensic Evidence Files (${evidence.length}): ${evidence.length > 0 ? evidence.map(e => `[${e.original_name} (${e.file_type}): ${e.forensic_notes || 'logged'}${e.extracted_text ? ` - Excerpt: ${e.extracted_text.slice(0, 150)}` : ''}]`).join('; ') : 'No physical evidence registered yet.'}
+- Evidence Board Clues & Suspects: ${clues.length > 0 ? clues.map(c => `${c.title} (Suspect: ${c.suspect || 'Unknown'}, Category: ${c.category || 'Clue'}): ${c.description}`).join('; ') : 'Board graph being assembled.'}
+${deliberations.length > 0 ? `- Recent Deliberations: ${deliberations.map(d => `${d.officer_name}: ${d.message.slice(0, 120)}...`).join(' | ')}` : ''}`;
       }
     }
 
+    const interrogationSystemPrompt = `${profile.systemPrompt}
+
+CURRENT OPERATIONAL PROTOCOL: 1-ON-1 INTERROGATION & DEBRIEF CHATBOT.
+You are in an interactive, conversational interrogation session with the Lead Investigator (the user).
+1. RESPOND CONVERSATIONALLY LIKE A DETECTIVE CHATBOT: Answer what the investigator is asking directly. Do not output a rigid conclave report. Speak naturally, sharply, and conversationally in your persona.
+2. DISCUSS THE CURRENT CASE: Frame your answers around the active case: "${caseItem ? caseItem.title : 'Active Bureau File'}" (${targetCaseRef || 'No active case'}). If asked about suspects, alibis, evidence, motives, or findings, consult the case dossier below.
+3. STAY IN CHARACTER:
+   - Detective Argus: Chief command, motive analysis, evidence synthesis, tactical recommendations.
+   - Detective Apex: Devil's advocate, finding holes in theories, questioning assumptions, alibi tests.
+   - Officer Lutkin: Forensic laboratory tests, file hashes, toolmarks, forgery detection, physical artifacts.
+   - Officer Vanguard: Perimeter surveillance, transit logs, rail depots, telegraph wire intercepts.
+   - Officer Cortex: Analytical patterns, anomaly correlations, link graphs, probability assessments.
+4. Keep answers focused, engaging, and concise (1 to 3 paragraphs). Always offer your deductive opinion and suggest what lead to follow next.
+
+${caseContext}`;
+
     const messages = [
       ...history.map(h => ({ role: h.role, content: h.content })),
-      { role: 'user', content: `${message}${caseContext}` }
+      { role: 'user', content: message }
     ];
 
     const result = await generateAgentCompletion({
       officerId,
-      systemPrompt: profile.systemPrompt,
+      systemPrompt: interrogationSystemPrompt,
       preferredModel: profile.preferredModel,
       messages
     });
 
-    if (caseRef) {
+    if (targetCaseRef) {
       db.prepare(`
         INSERT INTO deliberations (case_ref, officer_name, role, action_type, message, model_used)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).run(caseRef, profile.name, profile.title, 'interrogation_response', result.content, result.modelUsed);
+      `).run(targetCaseRef, profile.name, profile.title, 'interrogation_response', result.content, result.modelUsed);
     }
 
     res.json({
@@ -878,7 +922,8 @@ app.post('/api/interrogate', async (req, res) => {
       name: profile.name,
       role: profile.title,
       reply: result.content,
-      modelUsed: result.modelUsed
+      modelUsed: result.modelUsed,
+      caseRef: targetCaseRef
     });
   } catch (err) {
     console.error('Interrogation error:', err);
@@ -933,7 +978,9 @@ if (!process.env.VERCEL && fs.existsSync(frontendDist)) {
 // Export Express app for Vercel Services / Serverless
 export default app;
 
-if (!process.env.VERCEL || process.env.PORT) {
+// Only listen when running standalone locally outside Vercel serverless
+const isDirectRun = process.argv[1] && (process.argv[1].endsWith('server.js') || process.argv[1].includes('backend/server'));
+if (!process.env.VERCEL && isDirectRun) {
   app.listen(PORT, () => {
     console.log(`\n======================================================`);
     console.log(`★ ARGUS and Co. Investigation Bureau API is active`);

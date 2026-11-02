@@ -196,38 +196,36 @@ export default function InvestigationLab({
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#100d0a]">
-      
-      {/* View Header */}
-      <div className="flex-none p-4 bg-gradient-to-r from-[#21140c] via-[#170e09] to-[#21140c] border-b-2 border-[#b1844c] flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-rye text-xl md:text-2xl text-[#f0d9ad] tracking-wide flex items-center gap-2">
-            Investigation Laboratory & Conclave
-          </h1>
-          <p className="font-elite text-xs text-[#bda47b] mt-0.5">
-            5-Stage Autonomous Multi-Agent Investigation & Case Deliberation.
-          </p>
-        </div>
-
-        {/* Case Selector Dropdown */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-elite text-[#d6bd94] font-bold">SELECT CASE:</label>
-          <select
-            value={selectedCaseRef || ''}
-            onChange={(e) => onCaseChange(e.target.value)}
-            className="p-1.5 px-3 bg-[#f5e9cf] text-[#24170f] font-elite text-xs border border-[#9b7b50] rounded focus:outline-none"
-          >
-            <option value="">Choose a case dossier…</option>
-            {cases.map((c) => (
-              <option key={c.case_ref} value={c.case_ref}>
-                {c.case_ref} — {c.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Main Layout: 2 Columns */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        
+        {/* Case Selector Toolbar */}
+        <div className="flex items-center justify-between bg-[#1f130b] border border-[#78502c] p-2.5 px-4 rounded">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-elite text-[#d6bd94] font-bold">SELECT CASE:</label>
+            <select
+              value={selectedCaseRef || ''}
+              onChange={(e) => onCaseChange(e.target.value)}
+              className="p-1.5 px-3 bg-[#f5e9cf] text-[#24170f] font-elite text-xs border border-[#9b7b50] rounded focus:outline-none"
+            >
+              <option value="">Choose a case dossier…</option>
+              {cases.map((c) => (
+                <option key={c.case_ref} value={c.case_ref}>
+                  {c.case_ref} — {c.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          {activeCase && (
+            <div className="hidden sm:flex items-center gap-2 text-xs font-elite text-[#cbb085]">
+              <span className="opacity-75">Priority:</span>
+              <span className="text-[#f59e0b] font-bold">{activeCase.priority || 'High'}</span>
+              <span className="mx-1 text-[#6b4e33]">·</span>
+              <span className="opacity-75">Status:</span>
+              <span className="text-[#10b981] font-bold">{activeCase.status || 'Active'}</span>
+            </div>
+          )}
+        </div>
         
         {/* Top Split: Case Bench & 5 Officer Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

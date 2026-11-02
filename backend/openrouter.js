@@ -136,7 +136,72 @@ function getOfflineInvestigativeFallback({ officerId, systemPrompt, messages }) 
   const hasBank = /ledger|vault|silvercreek|bank|bullion|fund/i.test(fullText);
   const isReAnalysis = /RE-ANALYSIS/i.test(fullText);
 
-  // 3. Generate distinct officer finding
+  const isInterrogation = systemPrompt.includes('1-ON-1 INTERROGATION') || systemPrompt.includes('CHATBOT');
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content || 'our active leads';
+
+  // If this is a direct 1-on-1 interrogation chatbot session, respond conversationally in-character
+  if (isInterrogation) {
+    const cleanQuery = lastUserMsg.replace(/ACTIVE CASE CONTEXT:[\s\S]*/i, '').trim();
+    switch (target) {
+      case 'LUTKIN':
+        return {
+          content: `Officer Lutkin at the forensic bench. Regarding your inquiry on "${cleanQuery.slice(0, 65)}":
+
+In "${caseTitle}" (${caseRef}), the physical evidence provides our most reliable answers. The SHA-256 custody checksums confirm that our intake files have not been altered, and the microscopic scratch pattern indicates the security latch was opened from within using an authorized master key rather than exterior force.
+
+Memories fade and suspects lie, but the physical artifacts remain absolute. Would you like me to run a deeper spectrographic analysis on any specific evidence file?`,
+          modelUsed: 'bureau-forensic-engine (LUTKIN)',
+          success: true
+        };
+
+      case 'VANGUARD':
+        return {
+          content: `Officer Vanguard reporting from the field. On your query: "${cleanQuery.slice(0, 65)}":
+
+My surveillance across the perimeter for "${caseTitle}" (${caseRef}) picked up coordinated movement through the railway depots. Exactly sixteen minutes prior to the alarm, an encrypted telegraph dispatch was transmitted to an offshore entity, followed by a midnight departure on the eastern freight line.
+
+The suspect didn't act alone—a ground confederate cleared their transit checkpoints. I have the perimeter locked. What coordinates should I sweep next?`,
+          modelUsed: 'bureau-field-ops-engine (VANGUARD)',
+          success: true
+        };
+
+      case 'CORTEX':
+        return {
+          content: `Officer Cortex online. Processing your question: "${cleanQuery.slice(0, 65)}":
+
+Running the deductive link graph for "${caseTitle}" (${caseRef}) reveals an 89.4% probability of coordinated collusion. The timestamp anomalies in the ledger correlate directly with the transit movements Vanguard intercepted.
+
+Statistically, this is not random noise—it is a structured signature. If we isolate the financial transaction clusters, we will identify the syndicate controller behind the scenes.`,
+          modelUsed: 'bureau-analytics-engine (CORTEX)',
+          success: true
+        };
+
+      case 'APEX':
+        return {
+          content: `Detective Apex here. You asked: "${cleanQuery.slice(0, 65)}".
+
+Let me play devil's advocate for "${caseTitle}" (${caseRef}): the narrative pointing toward our primary suspect is almost too convenient. If I were defending them in a criminal tribunal, I would immediately exploit the 15-minute gap in the custody logs between 02:30 and 02:45.
+
+Before we rush to an arrest directive, we must confirm that this evidence wasn't planted to frame an innocent party. What proof do we have that withstands rigorous cross-examination?`,
+          modelUsed: 'bureau-review-engine (APEX)',
+          success: true
+        };
+
+      case 'ARGUS':
+      default:
+        return {
+          content: `Lead Investigator, on your directive regarding "${cleanQuery.slice(0, 65)}":
+
+Reviewing the full dossier for "${caseTitle}" (${caseRef}), my assessment is that we are dealing with deliberate premeditation rather than a spontaneous crime. The motive aligns directly with concealing the operational discrepancies before the official audit took place.
+
+I have tasked Officer Lutkin with verifying the custody hashes while Apex stress-tests the suspects' alibis. What is your command on our next investigative move?`,
+          modelUsed: 'bureau-command-engine (ARGUS)',
+          success: true
+        };
+    }
+  }
+
+  // 3. Otherwise, generate formal conclave deliberation finding
   switch (target) {
     case 'LUTKIN': {
       return {

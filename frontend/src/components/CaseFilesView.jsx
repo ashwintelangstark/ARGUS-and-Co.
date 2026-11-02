@@ -243,22 +243,6 @@ export default function CaseFilesView({
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#100d0a]">
-      
-      {/* Header */}
-      <div className="flex-none p-4 bg-gradient-to-r from-[#21140c] via-[#170e09] to-[#21140c] border-b-2 border-[#b1844c] flex items-center justify-between">
-        <div>
-          <h1 className="font-rye text-xl md:text-2xl text-[#f0d9ad] tracking-wide">
-            Case Files & Evidence Register
-          </h1>
-          <p className="font-elite text-xs text-[#bda47b] mt-0.5">
-            Register classified case materials, compute cryptographic hashes, and maintain chain-of-custody.
-          </p>
-        </div>
-        <span className="badge px-3 py-1 bg-[#5b3922] border border-[#a17849] text-[#f4dfb6] font-elite text-xs">
-          {activeCases.length} ACTIVE DOSSIERS
-        </span>
-      </div>
-
       {/* Main Body */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         
@@ -450,8 +434,11 @@ export default function CaseFilesView({
 
         {/* Registered Case Dossiers Table */}
         <div className="vintage-card p-5 rounded">
-          <h2 className="font-rye text-lg text-[#3e2311] border-b border-[#a88258] pb-2 mb-4">
-            Active Bureau Dossier Ledger
+          <h2 className="font-rye text-lg text-[#3e2311] border-b border-[#a88258] pb-2 mb-4 flex items-center justify-between">
+            <span>Active Bureau Dossier Ledger</span>
+            <span className="badge px-2.5 py-0.5 bg-[#5b3922] border border-[#a17849] text-[#f4dfb6] font-elite text-xs">
+              {activeCases.length} ACTIVE DOSSIERS
+            </span>
           </h2>
 
           <div className="overflow-x-auto">
