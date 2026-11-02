@@ -1,6 +1,106 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { bureauAudio } from '../utils/audio.js';
+import { kokoroVoiceEngine } from '../utils/kokoroVoiceEngine.js';
+import { Volume2, VolumeX, Mic, ArrowLeft, ArrowRight, Shield, Award, Sparkles } from 'lucide-react';
 import '../landing.css';
+
+const DETECTIVES = [
+  {
+    id: 'ARGUS',
+    indexStr: '01',
+    name: 'Detective Argus',
+    rank: 'Chief Investigation Officer & Bureau Director',
+    badge: 'CHIEF OF BUREAU · COMMAND & SYNTHESIS',
+    accentColor: '#f59e0b',
+    glowColor: 'rgba(245, 158, 11, 0.35)',
+    image: '/argus.png',
+    quote: 'Cold hard evidence outlives human deceit. We follow facts wherever they lead, and bring order to frontier chaos.',
+    speechText: 'Greetings. I am Detective Argus, Chief Investigation Officer of ARGUS and Company. Out here on the frontier, crime evolves faster than the law, but physical evidence never lies. My responsibility is to command this unit, weigh forensic facts against human motive, and coordinate our five specialists into an unshakeable executive verdict. When you commission a case with this bureau, no lead is ignored and no truth stays buried.',
+    bio: 'Detective Argus stands as the central pillar, strategic commander, and chief synthesizer of ARGUS & Co. With over two decades of high-stakes frontier investigation experience, Argus bridges the divide between empirical forensic laboratory data and the darker psychological nuances of human criminal intent. Dressed in his iconic chestnut western duster, gold-banded Stetson, and polished brass six-point chief star, Argus directly oversees case intake, resolves operational dependencies among operatives, leads multi-officer conclaves, and authors the official executive reports delivered to magistrates and clients.',
+    specialties: [
+      'Multi-Agent Conclave Leadership',
+      'Motive & Intent Deduction',
+      'Forensic & Testimonial Synthesis',
+      'Definitive Case Disposition & Executive Verdicts'
+    ]
+  },
+  {
+    id: 'APEX',
+    indexStr: '02',
+    name: 'Detective Apex',
+    rank: 'Deputy Investigation Officer & Adversarial Reviewer',
+    badge: 'DEPUTY COMMAND · RED-TEAM AUDIT',
+    accentColor: '#a855f7',
+    glowColor: 'rgba(168, 85, 247, 0.35)',
+    image: '/apex.png',
+    quote: 'If an argument cannot survive my cross-examination, it has no business appearing in the final verdict.',
+    speechText: 'I am Detective Apex, Deputy Investigation Officer. My role in this bureau is simple: I do not believe a theory until it is proven beyond a shadow of doubt. Before any hypothesis is accepted into the record, I tear it apart. I search for confirmation bias, chain-of-custody gaps, alibi flaws, and alternative suspects that a defense attorney would exploit in open court. If a conclusion survives my audit, only then is it fit for the record.',
+    bio: 'Second-in-command and the bureau’s relentless devil’s advocate, Detective Apex is sharp, athletic, and fearlessly skeptical. Tailored in dark crimson vest, bronze lapels, and leather gambler hat, she cross-examines every claim made during the investigation. Apex ensures that the bureau never falls victim to tunnel vision, premature convictions, or circumstantial speculation. Her rigorous counter-analysis stress-tests hypotheses, identifies contradictory evidence, and guarantees that no innocent individual is wrongfully implicated.',
+    specialties: [
+      'Adversarial Defense Simulation',
+      'Chain-of-Custody & Gap Auditing',
+      'Alternate Suspect Formulation',
+      'Confirmation Bias Mitigation & Cross-Examination'
+    ]
+  },
+  {
+    id: 'LUTKIN',
+    indexStr: '03',
+    name: 'Officer Lutkin',
+    rank: 'Forensic Intelligence Officer & Chief Evidence Custodian',
+    badge: 'DIGITAL & PHYSICAL FORENSICS',
+    accentColor: '#00d2ff',
+    glowColor: 'rgba(0, 210, 255, 0.35)',
+    image: '/lutkin.png',
+    quote: 'Suspects dissemble and memories fade with time. The physical artifact speaks with absolute, unvarnished truth.',
+    speechText: 'Officer Lutkin reporting from the forensic laboratory. While witnesses falter, physical and digital artifacts speak with absolute precision. My laboratory examines cryptographic file hashes, audio spectrograms, mechanical clockwork bypasses, altered ink marks, and forensic trace evidence. If a document has been forged or a digital ledger tampered with, my bench will expose it.',
+    bio: 'A master of forensic science and digital artifacts, Officer Lutkin presides over the evidence intake bench with unwavering scientific rigor. Behind round spectacles and her brass loupe, Lutkin extracts text from damaged ledgers, performs Fourier transform audio spectrogram analysis, calculates SHA-256 cryptographic hashes for integrity, and validates original files against counterfeit duplicates. Her meticulous laboratory logs and forensic custody records form the unassailable bedrock of every bureau investigation.',
+    specialties: [
+      'Cryptographic SHA-256 Hashing',
+      'Audio Waveform Spectrograms',
+      'Document Authenticity & Ink Analysis',
+      'Mechanical Vault & Sensor Bypass Forensics'
+    ]
+  },
+  {
+    id: 'VANGUARD',
+    indexStr: '04',
+    name: 'Officer Vanguard',
+    rank: 'Intelligence Operations Officer & Field Scout',
+    badge: 'FIELD OPERATIONS & OSINT',
+    accentColor: '#f97316',
+    glowColor: 'rgba(249, 115, 22, 0.35)',
+    image: '/vanguard.png',
+    quote: 'You cannot break a syndicate behind a polished desk. Truth leaves a trail across rails, wires, and port manifests.',
+    speechText: 'Officer Vanguard, Field Intelligence. You can not break a frontier syndicate sitting behind a polished mahogany desk. I trace suspect movements across railway depots, intercept telegraph ciphers, pull freight manifests at maritime piers, and reconstruct transit timelines. If someone moves money, boards a midnight train, or sends an encrypted wire, I establish the coordinates.',
+    bio: 'Rugged, athletic, and tactically pragmatic, Officer Vanguard is the bureau’s operative on the ground. Clad in a leather utility duster with field binoculars and compass, Vanguard monitors regional transit arteries, railway networks, and telegraph switching stations. Vanguard intercepts encrypted telegraph ribbons, verifies shipping logs, identifies syndicate safehouses, and provides real-time situational intelligence on suspect whereabouts and network affiliations.',
+    specialties: [
+      'Telegraph Wiretap & Cipher Intercept Analysis',
+      'Railway, Port & Transit Manifest Reconstruction',
+      'Geographical Choke-Point Mapping',
+      'Open-Source Public Records & Corporate Registry Tracing'
+    ]
+  },
+  {
+    id: 'CORTEX',
+    indexStr: '05',
+    name: 'Officer Cortex',
+    rank: 'Analytical Intelligence Officer & Deductive Prodigy',
+    badge: 'ANALYTICS & PATTERN MATRIX',
+    accentColor: '#10b981',
+    glowColor: 'rgba(16, 185, 129, 0.35)',
+    image: '/cortex.png',
+    quote: 'Coincidence is merely an unanalyzed correlation. The graph reveals the hidden syndicate behind the noise.',
+    speechText: 'Officer Cortex online. In a complex investigation, what appears to be random chaos is merely a high-dimensional pattern waiting to be decoded. I map the relationships between suspects, clues, bank drafts, and wire timestamps into dynamic link charts. When statistical anomalies emerge, or when separate cases share hidden harmonic signatures, I isolate the syndicate cluster.',
+    bio: 'A computational deduction prodigy, Officer Cortex transforms scattered, disconnected clues into coherent mathematical relationship graphs. Behind thin-rimmed rectangular spectacles and punch-tape ledgers, Cortex analyzes transaction time-deltas, detects carrier wave anomalies, and identifies hidden confederates in financial rings. His deductive link webs allow the bureau to visualize suspect connections and anticipate syndicate operations before they occur.',
+    specialties: [
+      'Autonomous Deductive Link Graphs & Clue Webs',
+      'Temporal Timeline & Transaction Matrices',
+      'Statistical Anomaly & Carrier Packet Detection',
+      'Syndicate Network Cluster Isolation'
+    ]
+  }
+];
 
 export default function LandingPage({ onEnterAgency }) {
   const containerRef = useRef(null);
@@ -9,6 +109,11 @@ export default function LandingPage({ onEnterAgency }) {
   const sheenRef = useRef(null);
   const orbitRef = useRef(null);
   const cardsRef = useRef([]);
+
+  // Detectives Vertical Slides State
+  const [selectedDetectiveIndex, setSelectedDetectiveIndex] = useState(0);
+  const [speakingOfficerId, setSpeakingOfficerId] = useState(null);
+  const [showSubtitles, setShowSubtitles] = useState(false);
 
   // Coin 3D Physics & Mouse Rotation State
   const animFrameRef = useRef(null);
@@ -47,11 +152,11 @@ export default function LandingPage({ onEnterAgency }) {
         bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
       }
 
-      // Check standard reveals (.heading, .agent, .callout, sections)
+      // Check standard reveals
       const reveals = document.querySelectorAll('.landing-wrapper .reveal');
       reveals.forEach((el) => {
         const rect = el.getBoundingClientRect();
-        if (rect.top <= vh * 0.88 && rect.bottom >= 0) {
+        if (rect.top <= vh * 0.90 && rect.bottom >= 0) {
           el.classList.add('show');
         }
       });
@@ -60,7 +165,7 @@ export default function LandingPage({ onEnterAgency }) {
       const storyRows = document.querySelectorAll('.landing-wrapper .story-row');
       storyRows.forEach((el, i) => {
         const rect = el.getBoundingClientRect();
-        if (rect.top <= vh * 0.90 && rect.bottom >= 0) {
+        if (rect.top <= vh * 0.92 && rect.bottom >= 0) {
           el.style.transitionDelay = `${Math.min(i % 3, 2) * 85}ms`;
           el.classList.add('visible');
         }
@@ -95,28 +200,7 @@ export default function LandingPage({ onEnterAgency }) {
     window.addEventListener('resize', updateScrollAnimations, { passive: true });
 
     // -------------------------------------------------------------
-    // 2. Interactive Agent Cards 3D Tilt on Hover
-    // -------------------------------------------------------------
-    const agentCards = document.querySelectorAll('.landing-wrapper .agent');
-    const moveHandlers = [];
-
-    agentCards.forEach((c) => {
-      const handleMouseMove = (e) => {
-        const r = c.getBoundingClientRect();
-        const x = (e.clientX - r.left) / r.width - 0.5;
-        const y = (e.clientY - r.top) / r.height - 0.5;
-        c.style.transform = `translateY(-8px) rotateY(${x * 8}deg) rotateX(${-y * 6}deg)`;
-      };
-      const handleMouseLeave = () => {
-        c.style.transform = '';
-      };
-      c.addEventListener('mousemove', handleMouseMove);
-      c.addEventListener('mouseleave', handleMouseLeave);
-      moveHandlers.push({ c, handleMouseMove, handleMouseLeave });
-    });
-
-    // -------------------------------------------------------------
-    // 3. 3D Coin Mouse Rotation & Drag Physics Loop
+    // 2. 3D Coin Mouse Rotation & Drag Physics Loop
     // -------------------------------------------------------------
     const tickCoin = () => {
       const state = rotState.current;
@@ -203,6 +287,9 @@ export default function LandingPage({ onEnterAgency }) {
       document.documentElement.classList.remove('landing-active');
       document.body.classList.remove('landing-active');
 
+      // Stop speech on unmount
+      kokoroVoiceEngine.stop();
+
       clearTimeout(timer1);
       clearTimeout(timer2);
       observer.disconnect();
@@ -217,11 +304,6 @@ export default function LandingPage({ onEnterAgency }) {
       window.removeEventListener('pointerup', handleGlobalPointerUp);
       window.removeEventListener('touchmove', handleGlobalPointerMove);
       window.removeEventListener('touchend', handleGlobalPointerUp);
-
-      moveHandlers.forEach(({ c, handleMouseMove, handleMouseLeave }) => {
-        c.removeEventListener('mousemove', handleMouseMove);
-        c.removeEventListener('mouseleave', handleMouseLeave);
-      });
     };
   }, []);
 
@@ -255,8 +337,45 @@ export default function LandingPage({ onEnterAgency }) {
     state.lastInteractionTime = Date.now();
   };
 
+  // Switch Detective Vertical Slide
+  const handleSelectDetective = (index) => {
+    bureauAudio.typewriterClick();
+    if (speakingOfficerId) {
+      kokoroVoiceEngine.stop();
+      setSpeakingOfficerId(null);
+    }
+    setSelectedDetectiveIndex(index);
+    setShowSubtitles(false);
+  };
+
+  // Introduce Yourself Spoken Action
+  const handleToggleSpeech = (detective) => {
+    bureauAudio.typewriterClick();
+    if (speakingOfficerId === detective.id) {
+      kokoroVoiceEngine.stop();
+      setSpeakingOfficerId(null);
+    } else {
+      kokoroVoiceEngine.stop();
+      setSpeakingOfficerId(detective.id);
+      setShowSubtitles(true);
+
+      kokoroVoiceEngine.speak(detective.id, detective.speechText, {
+        onStart: () => {
+          setSpeakingOfficerId(detective.id);
+        },
+        onEnd: () => {
+          setSpeakingOfficerId(null);
+        },
+        onError: () => {
+          setSpeakingOfficerId(null);
+        }
+      });
+    }
+  };
+
   const handleAction = () => {
     bureauAudio.typewriterClick();
+    kokoroVoiceEngine.stop();
     if (onEnterAgency) {
       onEnterAgency();
     }
@@ -269,6 +388,8 @@ export default function LandingPage({ onEnterAgency }) {
       target.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  const currentDetective = DETECTIVES[selectedDetectiveIndex];
 
   return (
     <div className="landing-wrapper" ref={containerRef}>
@@ -358,60 +479,178 @@ export default function LandingPage({ onEnterAgency }) {
           </div>
         </section>
 
-        {/* Section: Meet the Detectives */}
+        {/* ========================================================================= */}
+        {/* Section: Meet the Detectives - Full-Scale Vertical Slides with Voice Intro */}
+        {/* ========================================================================= */}
         <section className="content reveal" id="agents">
-          <div className="heading">
-            <div>
-              <div className="eyebrow">THE INVESTIGATIVE UNIT</div>
-              <h2>Meet the detectives.</h2>
+          <div className="detectives-showcase">
+            <div className="heading">
+              <div>
+                <div className="eyebrow">THE INVESTIGATIVE UNIT · SPECIALIST DOSSIERS</div>
+                <h2>Meet the detectives.</h2>
+              </div>
+              <p>Five officers, five disciplines—from evidence intake to independent review. Select a detective below to view their full vertical dossier and hear their voice self-introduction.</p>
             </div>
-            <p>Five officers, five disciplines—from evidence intake to independent review. A coordinated team built around methodical investigation.</p>
-          </div>
-          <div className="agents">
-            <article className="agent">
-              <div className="portrait">🤠</div>
-              <div className="agentinfo">
-                <small>CHIEF INVESTIGATOR</small>
-                <h3>Detective Argus</h3>
-                <p>Leads the case, sets priorities, and consolidates reviewed findings.</p>
-              </div>
-            </article>
 
-            <article className="agent">
-              <div className="portrait">🕵🏻‍♀️</div>
-              <div className="agentinfo">
-                <small>DEPUTY INVESTIGATOR</small>
-                <h3>Detective Apex</h3>
-                <p>Challenges assumptions and performs independent verification.</p>
-              </div>
-            </article>
+            {/* Detective Selector Tab Bar */}
+            <div className="detective-tabs" role="tablist">
+              {DETECTIVES.map((det, idx) => {
+                const isActive = idx === selectedDetectiveIndex;
+                const isSpeakingThis = speakingOfficerId === det.id;
+                return (
+                  <button
+                    key={det.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => handleSelectDetective(idx)}
+                    className={`detective-tab-btn ${isActive ? 'active' : ''}`}
+                    style={isActive ? { borderColor: det.accentColor } : {}}
+                  >
+                    <img 
+                      src={det.image} 
+                      alt={det.name} 
+                      className="detective-tab-thumb"
+                      style={isActive ? { borderColor: det.accentColor } : {}}
+                    />
+                    <span>{det.name}</span>
+                    {isSpeakingThis && (
+                      <span style={{ color: det.accentColor, fontSize: '11px', animation: 'speechPulse 0.6s infinite alternate' }}>
+                        🔊
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-            <article className="agent">
-              <div className="portrait">🔎</div>
-              <div className="agentinfo">
-                <small>FORENSIC INTELLIGENCE</small>
-                <h3>Officer Lutkin</h3>
-                <p>Examines case documents and records evidence observations.</p>
+            {/* Active Vertical Detective Slide Card */}
+            <div className="detective-slide-card" key={currentDetective.id}>
+              {/* Column 1: Full-Scale Portrait */}
+              <div className="detective-portrait-col">
+                <img 
+                  src={currentDetective.image} 
+                  alt={currentDetective.name} 
+                  className="detective-portrait-img"
+                />
+                <div className="detective-portrait-overlay"></div>
+                
+                <div className="detective-portrait-badge">
+                  <span>{currentDetective.badge}</span>
+                  <span style={{ color: currentDetective.accentColor }}>★ ACTIVE</span>
+                </div>
               </div>
-            </article>
 
-            <article className="agent">
-              <div className="portrait">⭐</div>
-              <div className="agentinfo">
-                <small>INTELLIGENCE OPERATIONS</small>
-                <h3>Officer Vanguard</h3>
-                <p>Supports authorised research and traceable source collection.</p>
-              </div>
-            </article>
+              {/* Column 2: Detailed Dossier & Voice Introduction */}
+              <div className="detective-info-col">
+                <div>
+                  <div 
+                    className="detective-badge-tag"
+                    style={{ 
+                      background: `rgba(35, 22, 13, 0.9)`, 
+                      border: `1px solid ${currentDetective.accentColor}`,
+                      color: currentDetective.accentColor
+                    }}
+                  >
+                    <Award size={13} />
+                    <span>{currentDetective.badge}</span>
+                  </div>
 
-            <article className="agent">
-              <div className="portrait">🧠</div>
-              <div className="agentinfo">
-                <small>ANALYTICAL INTELLIGENCE</small>
-                <h3>Officer Cortex</h3>
-                <p>Compares records, spots patterns, and flags anomalies.</p>
+                  <h3 className="detective-name">{currentDetective.name}</h3>
+                  <div className="detective-title">{currentDetective.rank}</div>
+
+                  <div className="detective-quote">
+                    "{currentDetective.quote}"
+                  </div>
+
+                  {/* Introduce Yourself Voice Button */}
+                  <div className="detective-speech-bar">
+                    <button
+                      onClick={() => handleToggleSpeech(currentDetective)}
+                      className={`speech-trigger-btn ${speakingOfficerId === currentDetective.id ? 'speaking' : ''}`}
+                      title="Listen to this detective introduce themselves with custom voice synthesis"
+                    >
+                      {speakingOfficerId === currentDetective.id ? (
+                        <>
+                          <VolumeX size={16} />
+                          <span>STOP INTRODUCTION</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 size={16} />
+                          <span>INTRODUCE YOURSELF 🎙️</span>
+                        </>
+                      )}
+                    </button>
+
+                    {speakingOfficerId === currentDetective.id && (
+                      <div className="speech-wave-indicator" aria-label="Audio active">
+                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
+                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
+                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
+                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
+                        <div className="speech-bar" style={{ background: currentDetective.accentColor }}></div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Live Spoken Subtitle Teleprompter */}
+                  {(speakingOfficerId === currentDetective.id || showSubtitles) && (
+                    <div 
+                      className="speech-subtitles-box"
+                      style={{ borderLeft: `3px solid ${currentDetective.accentColor}` }}
+                    >
+                      <div style={{ color: currentDetective.accentColor, fontSize: '10px', letterSpacing: '2px', marginBottom: '4px' }}>
+                        LIVE SPOKEN INTRODUCTION · TELEGRAPH AUDIO CADENCE
+                      </div>
+                      "{currentDetective.speechText}"
+                    </div>
+                  )}
+
+                  {/* Detailed Bio */}
+                  <div className="detective-bio">
+                    {currentDetective.bio}
+                  </div>
+
+                  {/* Key Specialties Grid */}
+                  <div className="detective-specialties-label">
+                    CORE INVESTIGATIVE CAPABILITIES &amp; SPECIALTIES:
+                  </div>
+                  <div className="detective-specialties-grid">
+                    {currentDetective.specialties.map((spec, sIdx) => (
+                      <span 
+                        key={sIdx} 
+                        className="detective-specialty-pill"
+                        style={{ borderLeft: `2px solid ${currentDetective.accentColor}` }}
+                      >
+                        • {spec}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Slide Footer Navigation Controls */}
+                <div className="detective-slide-footer">
+                  <div>
+                    OPERATIVE SLIDE <strong>{currentDetective.indexStr}</strong> OF <strong>05</strong>
+                  </div>
+
+                  <div className="slide-nav-arrows">
+                    <button
+                      className="slide-arrow-btn"
+                      onClick={() => handleSelectDetective((selectedDetectiveIndex - 1 + DETECTIVES.length) % DETECTIVES.length)}
+                    >
+                      ← PREVIOUS
+                    </button>
+                    <button
+                      className="slide-arrow-btn"
+                      onClick={() => handleSelectDetective((selectedDetectiveIndex + 1) % DETECTIVES.length)}
+                    >
+                      NEXT DETECTIVE →
+                    </button>
+                  </div>
+                </div>
               </div>
-            </article>
+            </div>
           </div>
         </section>
 
