@@ -975,17 +975,14 @@ if (!process.env.VERCEL && fs.existsSync(frontendDist)) {
   });
 }
 
-// Export Express app for Vercel Services / Serverless
+// Export Express app
 export default app;
 
-// Only listen when running standalone locally outside Vercel serverless
-const isDirectRun = process.argv[1] && (process.argv[1].endsWith('server.js') || process.argv[1].includes('backend/server'));
-if (!process.env.VERCEL && isDirectRun) {
-  app.listen(PORT, () => {
-    console.log(`\n======================================================`);
-    console.log(`★ ARGUS and Co. Investigation Bureau API is active`);
-    console.log(`★ Port: http://localhost:${PORT}`);
-    console.log(`★ Free AI Models Connected via OpenRouter`);
-    console.log(`======================================================\n`);
-  });
-}
+// Start HTTP server for Vercel Express service & local development
+app.listen(PORT, () => {
+  console.log(`\n======================================================`);
+  console.log(`★ ARGUS and Co. Investigation Bureau API is active`);
+  console.log(`★ Port: http://localhost:${PORT}`);
+  console.log(`★ Free AI Models Connected via OpenRouter`);
+  console.log(`======================================================\n`);
+});
