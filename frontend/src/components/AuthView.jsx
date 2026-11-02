@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { bureauAudio } from '../utils/audio.js';
 import { Shield, Key, Mail, User, Check, AlertCircle, ArrowLeft, Send } from 'lucide-react';
 
 export default function AuthView({ onAuthSuccess, onBackToLanding }) {
+  useEffect(() => {
+    document.documentElement.classList.add('auth-active');
+    document.body.classList.add('auth-active');
+    return () => {
+      document.documentElement.classList.remove('auth-active');
+      document.body.classList.remove('auth-active');
+    };
+  }, []);
+
   const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'forgot'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -902,3 +911,4 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
     </div>
   );
 }
+

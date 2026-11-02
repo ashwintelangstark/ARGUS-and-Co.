@@ -4,54 +4,99 @@ import '../landing.css';
 
 export default function LandingPage({ onEnterAgency }) {
   const containerRef = useRef(null);
+  const heroRef = useRef(null);
+  const sealRef = useRef(null);
+  const sheenRef = useRef(null);
+  const orbitRef = useRef(null);
+  const cardsRef = useRef([]);
+
+  // Coin 3D Physics & Mouse Rotation State
+  const animFrameRef = useRef(null);
+  const rotState = useRef({
+    currentX: 0,
+    currentY: 0,
+    currentZ: 0,
+    targetX: 3,
+    targetY: -8,
+    targetZ: 0,
+    isDragging: false,
+    dragStartX: 0,
+    dragStartY: 0,
+    dragStartRotX: 0,
+    dragStartRotY: 0,
+    lastInteractionTime: Date.now()
+  });
 
   useEffect(() => {
-    // 1. Intersection Observer for standard reveal elements
-    const revealObserver = new IntersectionObserver(
+    // Enable natural window scrolling while Landing Page is mounted
+    document.documentElement.classList.add('landing-active');
+    document.body.classList.add('landing-active');
+
+    // -------------------------------------------------------------
+    // 1. Dual-Layer Robust Scroll Animations (.reveal & .story-row)
+    // -------------------------------------------------------------
+    const updateScrollAnimations = () => {
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+
+      // Update scroll progress bar
+      const bar = document.getElementById('scrollProgress');
+      if (bar) {
+        const totalHeight = document.documentElement.scrollHeight - vh;
+        const pct = totalHeight > 0 ? (scrollY / totalHeight) * 100 : 0;
+        bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+      }
+
+      // Check standard reveals (.heading, .agent, .callout, sections)
+      const reveals = document.querySelectorAll('.landing-wrapper .reveal');
+      reveals.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= vh * 0.88 && rect.bottom >= 0) {
+          el.classList.add('show');
+        }
+      });
+
+      // Check story progression rows (01 - 09)
+      const storyRows = document.querySelectorAll('.landing-wrapper .story-row');
+      storyRows.forEach((el, i) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= vh * 0.90 && rect.bottom >= 0) {
+          el.style.transitionDelay = `${Math.min(i % 3, 2) * 85}ms`;
+          el.classList.add('visible');
+        }
+      });
+    };
+
+    // IntersectionObserver for reactive triggers
+    const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('show');
-            revealObserver.unobserve(e.target);
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (entry.target.classList.contains('story-row')) {
+              entry.target.classList.add('visible');
+            } else {
+              entry.target.classList.add('show');
+            }
           }
         });
       },
-      { threshold: 0.12 }
+      { threshold: 0.05, rootMargin: '0px 0px -40px 0px' }
     );
 
-    const reveals = document.querySelectorAll('.landing-wrapper .reveal');
-    reveals.forEach((el) => revealObserver.observe(el));
-
-    // 2. Intersection Observer for story rows
-    const storyObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('visible');
-            storyObserver.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
-    );
-
-    const storyRows = document.querySelectorAll('.landing-wrapper .story-row');
-    storyRows.forEach((el, i) => {
-      el.style.transitionDelay = `${Math.min(i % 3, 2) * 90}ms`;
-      storyObserver.observe(el);
+    document.querySelectorAll('.landing-wrapper .reveal, .landing-wrapper .story-row').forEach((el) => {
+      observer.observe(el);
     });
 
-    // 3. Scroll progress bar indicator
-    const bar = document.getElementById('scrollProgress');
-    const handleScroll = () => {
-      if (!bar) return;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      bar.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + '%';
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+    // Run immediately and attach scroll listeners
+    updateScrollAnimations();
+    const timer1 = setTimeout(updateScrollAnimations, 60);
+    const timer2 = setTimeout(updateScrollAnimations, 250);
+    window.addEventListener('scroll', updateScrollAnimations, { passive: true });
+    window.addEventListener('resize', updateScrollAnimations, { passive: true });
 
-    // 4. Interactive 3D card tilt on hover
+    // -------------------------------------------------------------
+    // 2. Interactive Agent Cards 3D Tilt on Hover
+    // -------------------------------------------------------------
     const agentCards = document.querySelectorAll('.landing-wrapper .agent');
     const moveHandlers = [];
 
@@ -70,16 +115,145 @@ export default function LandingPage({ onEnterAgency }) {
       moveHandlers.push({ c, handleMouseMove, handleMouseLeave });
     });
 
+    // -------------------------------------------------------------
+    // 3. 3D Coin Mouse Rotation & Drag Physics Loop
+    // -------------------------------------------------------------
+    const tickCoin = () => {
+      const state = rotState.current;
+      const now = Date.now();
+
+      // Ambient breathing float if user is idle for > 800ms and not dragging
+      if (!state.isDragging && now - state.lastInteractionTime > 800) {
+        const t = now * 0.0014;
+        const ambX = Math.sin(t * 1.4) * 8;
+        const ambY = Math.cos(t * 1.1) * 12;
+        state.targetX += (ambX - state.targetX) * 0.02;
+        state.targetY += (ambY - state.targetY) * 0.02;
+        state.targetZ += (-state.targetZ) * 0.02;
+      }
+
+      // Smooth damping interpolation (lerp)
+      const lerpFactor = state.isDragging ? 0.22 : 0.085;
+      state.currentX += (state.targetX - state.currentX) * lerpFactor;
+      state.currentY += (state.targetY - state.currentY) * lerpFactor;
+      state.currentZ += (state.targetZ - state.currentZ) * lerpFactor;
+
+      // Update 3D Coin Transform
+      if (sealRef.current) {
+        sealRef.current.style.transform = `rotateX(${state.currentX.toFixed(2)}deg) rotateY(${state.currentY.toFixed(2)}deg) rotateZ(${state.currentZ.toFixed(2)}deg)`;
+
+        // Dynamic 3D rim drop shadows shifting with light angle
+        const shadowX = -state.currentY * 0.95;
+        const shadowY = 38 + state.currentX * 0.85;
+        sealRef.current.style.boxShadow = `${shadowX.toFixed(1)}px ${shadowY.toFixed(1)}px 75px rgba(0,0,0,0.85), 0 0 55px rgba(213, 164, 91, 0.25)`;
+      }
+
+      // Dynamic Metallic Specular Light Reflection
+      if (sheenRef.current) {
+        const lightX = 50 + (state.currentY / 50) * 35;
+        const lightY = 35 + (-state.currentX / 40) * 35;
+        sheenRef.current.style.background = `radial-gradient(circle at ${lightX.toFixed(1)}% ${lightY.toFixed(1)}%, rgba(255, 238, 185, 0.5) 0%, rgba(213, 164, 91, 0.18) 35%, transparent 68%)`;
+      }
+
+      // Dynamic Orbit Parallax
+      if (orbitRef.current) {
+        orbitRef.current.style.transform = `rotateX(${(65 - state.currentX * 0.35).toFixed(2)}deg) rotateZ(${(-25 + state.currentY * 0.5).toFixed(2)}deg)`;
+      }
+
+      // Floating Cards Parallax
+      if (cardsRef.current) {
+        cardsRef.current.forEach((card, idx) => {
+          if (!card) return;
+          const factor = (idx + 1) * 0.35;
+          card.style.transform = `translate3d(${(-state.currentY * factor).toFixed(1)}px, ${(-state.currentX * factor).toFixed(1)}px, 35px)`;
+        });
+      }
+
+      animFrameRef.current = requestAnimationFrame(tickCoin);
+    };
+
+    animFrameRef.current = requestAnimationFrame(tickCoin);
+
+    // Global Pointer Move & Up listeners for coin dragging
+    const handleGlobalPointerMove = (e) => {
+      const state = rotState.current;
+      if (!state.isDragging) return;
+
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+      const deltaX = clientX - state.dragStartX;
+      const deltaY = clientY - state.dragStartY;
+
+      state.targetY = state.dragStartRotY + deltaX * 0.75;
+      state.targetX = state.dragStartRotX - deltaY * 0.75;
+      state.lastInteractionTime = Date.now();
+    };
+
+    const handleGlobalPointerUp = () => {
+      rotState.current.isDragging = false;
+      rotState.current.lastInteractionTime = Date.now();
+    };
+
+    window.addEventListener('pointermove', handleGlobalPointerMove);
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('touchmove', handleGlobalPointerMove, { passive: true });
+    window.addEventListener('touchend', handleGlobalPointerUp);
+
     return () => {
-      revealObserver.disconnect();
-      storyObserver.disconnect();
-      window.removeEventListener('scroll', handleScroll);
+      document.documentElement.classList.remove('landing-active');
+      document.body.classList.remove('landing-active');
+
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      observer.disconnect();
+      window.removeEventListener('scroll', updateScrollAnimations);
+      window.removeEventListener('resize', updateScrollAnimations);
+
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+
+      window.removeEventListener('pointermove', handleGlobalPointerMove);
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('touchmove', handleGlobalPointerMove);
+      window.removeEventListener('touchend', handleGlobalPointerUp);
+
       moveHandlers.forEach(({ c, handleMouseMove, handleMouseLeave }) => {
         c.removeEventListener('mousemove', handleMouseMove);
         c.removeEventListener('mouseleave', handleMouseLeave);
       });
     };
   }, []);
+
+  // Mouse rotation over Hero section
+  const handleHeroMouseMove = (e) => {
+    const state = rotState.current;
+    if (state.isDragging || !sealRef.current) return;
+
+    const rect = sealRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const dx = (e.clientX - centerX) / (window.innerWidth / 2);
+    const dy = (e.clientY - centerY) / (window.innerHeight / 2);
+
+    state.targetY = Math.max(-55, Math.min(55, dx * 45));
+    state.targetX = Math.max(-42, Math.min(42, -dy * 35));
+    state.targetZ = dx * -6;
+    state.lastInteractionTime = Date.now();
+  };
+
+  // Pointer Down on Coin to start Drag Rotation
+  const handleCoinPointerDown = (e) => {
+    bureauAudio.typewriterClick();
+    const state = rotState.current;
+    state.isDragging = true;
+    state.dragStartX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+    state.dragStartY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+    state.dragStartRotX = state.targetX;
+    state.dragStartRotY = state.targetY;
+    state.lastInteractionTime = Date.now();
+  };
 
   const handleAction = () => {
     bureauAudio.typewriterClick();
@@ -103,7 +277,7 @@ export default function LandingPage({ onEnterAgency }) {
 
       {/* Navigation Bar */}
       <nav>
-        <a className="brand" href="#top" onClick={(e) => { e.preventDefault(); scrollToSection('top'); }}>
+        <a className="brand cursor-pointer" href="#top" onClick={(e) => { e.preventDefault(); scrollToSection('top'); }}>
           <img src="/logo.png" alt="ARGUS & Co." />
           <span>
             <b>ARGUS & Co.</b>
@@ -122,7 +296,7 @@ export default function LandingPage({ onEnterAgency }) {
 
       {/* Hero Section */}
       <main id="top">
-        <section className="hero">
+        <section className="hero" ref={heroRef} onMouseMove={handleHeroMouseMove}>
           <div className="copy">
             <div className="eyebrow">PRIVATE INVESTIGATION · EST. 1891</div>
             <h1>
@@ -145,23 +319,39 @@ export default function LandingPage({ onEnterAgency }) {
           </div>
 
           <div className="art">
-            <div className="orbit"></div>
-            <div className="seal">
-              <div className="seal-in">
-                <img src="/logo.png" alt="ARGUS emblem" />
-                <strong>ARGUS & Co.</strong>
-                <small>DETECTIVE AGENCY</small>
+            <div className="orbit" ref={orbitRef}></div>
+            
+            <div className="seal-container">
+              {/* Interactive 3D Coin Medallion */}
+              <div 
+                className="seal" 
+                ref={sealRef}
+                onPointerDown={handleCoinPointerDown}
+                title="Click & Drag to rotate the 3D Bureau Coin"
+              >
+                <div className="seal-sheen" ref={sheenRef}></div>
+                <div className="seal-in">
+                  <img src="/logo.png" alt="ARGUS emblem" />
+                  <strong>ARGUS & Co.</strong>
+                  <small>DETECTIVE AGENCY</small>
+                </div>
+              </div>
+
+              {/* Interactive Badge Hint */}
+              <div className="coin-hint">
+                <span style={{ fontSize: '12px' }}>⟲</span> CLICK &amp; DRAG 3D COIN · MOUSE INTERACTIVE
               </div>
             </div>
-            <div className="floatcard f1">
+
+            <div className="floatcard f1" ref={(el) => (cardsRef.current[0] = el)}>
               <b>CASE 001 · OPEN</b>
               <small>Evidence intake ready</small>
             </div>
-            <div className="floatcard f2">
+            <div className="floatcard f2" ref={(el) => (cardsRef.current[1] = el)}>
               <b>5 SPECIALISTS</b>
               <small>One coordinated bureau</small>
             </div>
-            <div className="floatcard f3">
+            <div className="floatcard f3" ref={(el) => (cardsRef.current[2] = el)}>
               <b>FRONTIER DISTRICT</b>
               <small>Est. 1891 · On the record</small>
             </div>

@@ -33,6 +33,21 @@ html, body, #root {
   font-family: 'Roboto Condensed', sans-serif;
 }
 
+/* Allow scrolling when public Landing Page or Auth Gateway is mounted */
+html.landing-active,
+body.landing-active,
+body.landing-active #root,
+html.auth-active,
+body.auth-active,
+body.auth-active #root {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  scroll-behavior: smooth !important;
+}
+
 button, input, textarea, select {
   font: inherit;
 }
