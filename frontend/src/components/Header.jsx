@@ -4,7 +4,9 @@ import { Clock } from 'lucide-react';
 
 export default function Header({ 
   activeView, 
-  onViewChange 
+  onViewChange,
+  currentUser,
+  onExitToLanding 
 }) {
   const [timeStr, setTimeStr] = useState('');
 
@@ -61,10 +63,45 @@ export default function Header({
         })}
       </nav>
 
-      <div className="topright">
+      <div className="topright" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <span className="dot"></span>
         <span>BUREAU STATUS: ON DUTY</span>
-        <span style={{ marginLeft: '12px', opacity: 0.75 }}>{timeStr}</span>
+        {currentUser && (
+          <span style={{ color: '#d5a45b', fontFamily: "'Special Elite', monospace", fontSize: '11px', borderLeft: '1px solid #78502c', paddingLeft: '8px' }}>
+            OPERATIVE: {currentUser.username}
+          </span>
+        )}
+        <span style={{ opacity: 0.75 }}>{timeStr}</span>
+        {onExitToLanding && (
+          <button
+            onClick={() => {
+              bureauAudio.typewriterClick();
+              onExitToLanding();
+            }}
+            title="Exit to Public Landing Page"
+            style={{
+              background: 'rgba(50, 30, 16, 0.85)',
+              border: '1px solid #78502c',
+              color: '#d5a45b',
+              padding: '3px 8px',
+              fontSize: '10px',
+              fontFamily: "'Special Elite', monospace",
+              cursor: 'pointer',
+              borderRadius: '2px',
+              transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#d5a45b';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#78502c';
+              e.currentTarget.style.color = '#d5a45b';
+            }}
+          >
+            LANDING
+          </button>
+        )}
       </div>
     </header>
   );

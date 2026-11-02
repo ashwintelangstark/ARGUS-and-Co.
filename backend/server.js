@@ -6,8 +6,9 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
 
-import db, { initDatabase } from './database.js';
+import db, { initDatabase, hashPassword, verifyPassword } from './database.js';
 import { generateAgentCompletion, FREE_MODELS } from './openrouter.js';
 import { AGENT_PROFILES } from './agents/agentPrompts.js';
 import { runBureauConclave } from './agents/investigationOrchestrator.js';
@@ -59,6 +60,292 @@ const upload = multer({
 
 // Active SSE client connections keyed by caseRef
 const sseClients = new Map();
+
+// ==========================================
+// AUTHENTICATION & TELEGRAPH DISPATCH HELPERS
+// ==========================================
+
+async function sendRecoveryMail(recipientEmail, username, newPassword) {
+  const mailText = `ARGUS & CO. WESTERN INVESTIGATION BUREAU
+FRONTIER DISTRICT · CLASSIFIED TELEGRAPH DISPATCH
+
+Attn Operative: ${username}
+Registered Dispatch Address: ${recipientEmail}
+
+A credential recovery request was submitted to the Bureau Registry.
+Your access cipher has been renewed:
+
+TEMPORARY CIPHER: ${newPassword}
+
+Please return to the Bureau Gateway and authenticate using this cipher.
+For security of the dossier vault, update your cipher once inside the Case Files.
+
+Observe closely. Question everything. Follow the evidence.
+— Chief Inspector ARGUS, Western Investigation Bureau`;
+
+  const mailHtml = `
+  <div style="background-color: #160d07; color: #ead8b4; font-family: 'Cinzel', Georgia, serif; padding: 32px; border: 2px solid #8a6035; max-width: 580px; margin: 0 auto; border-radius: 4px;">
+    <div style="border-bottom: 1px solid #78502c; padding-bottom: 16px; margin-bottom: 24px; text-align: center;">
+      <h2 style="color: #d5a45b; margin: 0; font-size: 24px; letter-spacing: 2px;">ARGUS &amp; CO.</h2>
+      <p style="color: #a78b61; margin: 4px 0 0 0; font-size: 11px; letter-spacing: 3px;">WESTERN INVESTIGATION BUREAU · EST. 1891</p>
+    </div>
+    <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.7; color: #d8c3a1;">
+      <p><strong style="color: #e8c27e;">ATTN OPERATIVE:</strong> ${username}</p>
+      <p><strong style="color: #e8c27e;">TELEGRAPH DESTINATION:</strong> ${recipientEmail}</p>
+      <p>A cipher recovery request was logged in the Bureau Register. Your operational access credentials have been renewed.</p>
+      
+      <div style="background: #24160c; border: 1px solid #b88b4a; padding: 18px; margin: 24px 0; text-align: center;">
+        <span style="font-size: 11px; color: #a9906c; letter-spacing: 2px; display: block; margin-bottom: 6px;">TEMPORARY BUREAU CIPHER</span>
+        <strong style="font-size: 24px; color: #f0cb80; letter-spacing: 4px; font-family: monospace;">${newPassword}</strong>
+      </div>
+      
+      <p>Return to the Bureau Ledger to authenticate. For the integrity of all classified dossiers, memorize or secure this cipher immediately.</p>
+      <p style="margin-top: 24px; color: #9f835d; font-style: italic;">"Observe closely. Question everything. Follow the evidence."</p>
+      <p style="color: #d5a45b; font-size: 12px; margin-top: 16px;">— Chief Inspector ARGUS &amp; Company Detectives</p>
+    </div>
+  </div>`;
+
+  const host = process.env.SMTP_HOST || process.env.MAIL_HOST;
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+  const port = parseInt(process.env.SMTP_PORT || '587');
+
+  if (host && user && pass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass }
+      });
+
+      await transporter.sendMail({
+        from: `"${process.env.EMAIL_FROM_NAME || 'ARGUS & Co. Bureau'}" <${user}>`,
+        to: recipientEmail,
+        subject: `[ARGUS & Co.] Cipher Recovery for Operative ${username}`,
+        text: mailText,
+        html: mailHtml
+      });
+      console.log(`[AUTH MAIL] Dispatch successfully transmitted to ${recipientEmail}`);
+      return { sent: true, method: 'smtp' };
+    } catch (err) {
+      console.error('[AUTH MAIL ERROR]', err.message);
+      return { sent: false, error: err.message, fallback: true };
+    }
+  } else {
+    console.log(`[AUTH MAIL TELEGRAPH] SMTP not configured. Generated cipher for ${username} (${recipientEmail}): ${newPassword}`);
+    return { sent: true, method: 'simulation' };
+  }
+}
+
+// ==========================================
+// ROUTES: AUTHENTICATION
+// ==========================================
+
+// Enlist New Operative (Sign Up)
+app.post('/api/auth/signup', (req, res) => {
+  try {
+    const { username, email, password, confirmPassword } = req.body;
+
+    if (!username || !email || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'All fields (username, email, password, confirmation) are required.' });
+    }
+
+    const cleanUser = String(username).trim();
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    if (cleanUser.length < 3 || cleanUser.length > 32) {
+      return res.status(400).json({ error: 'Operative handle must be between 3 and 32 characters.' });
+    }
+
+    if (!/^[a-zA-Z0-9_\-\.]+$/.test(cleanUser)) {
+      return res.status(400).json({ error: 'Operative handle may only contain letters, numbers, periods, dashes, or underscores.' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please provide a valid telegraph dispatch address (email).' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Cipher password must be at least 6 characters in length.' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Cipher confirmation does not match the chosen password.' });
+    }
+
+    // Check for duplicate username (case-insensitive)
+    const existingUser = db.prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE').get(cleanUser);
+    if (existingUser) {
+      return res.status(409).json({
+        error: `Operative handle "${cleanUser}" is already commissioned in the bureau registry. Please choose a distinct handle.`
+      });
+    }
+
+    // Check for duplicate email
+    const existingEmail = db.prepare('SELECT id FROM users WHERE email = ? COLLATE NOCASE').get(cleanEmail);
+    if (existingEmail) {
+      return res.status(409).json({
+        error: `The dispatch address "${cleanEmail}" is already linked to an active operative credential.`
+      });
+    }
+
+    const passwordHash = hashPassword(password);
+    const insert = db.prepare(`
+      INSERT INTO users (username, email, password_hash, created_at, last_login)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+    const result = insert.run(cleanUser, cleanEmail, passwordHash);
+    const token = crypto.randomBytes(32).toString('hex');
+
+    try {
+      db.prepare(`
+        INSERT INTO audit_trail (case_ref, officer, action, details)
+        VALUES (?, ?, ?, ?)
+      `).run(null, cleanUser, 'OPERATIVE_COMMISSIONED', `New operative credential registered for ${cleanUser} (${cleanEmail})`);
+    } catch (e) {}
+
+    return res.status(201).json({
+      success: true,
+      user: {
+        id: result.lastInsertRowid,
+        username: cleanUser,
+        email: cleanEmail
+      },
+      token,
+      message: `Operative ${cleanUser} successfully commissioned into ARGUS & Co.`
+    });
+  } catch (err) {
+    console.error('Signup error:', err);
+    return res.status(500).json({ error: 'Failed to enlist operative: ' + err.message });
+  }
+});
+
+// Authenticate Operative (Login)
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { username, password, rememberMe } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Please provide both your operative handle and cipher password.' });
+    }
+
+    const cleanIdentifier = String(username).trim();
+
+    const user = db.prepare(`
+      SELECT * FROM users 
+      WHERE username = ? COLLATE NOCASE OR email = ? COLLATE NOCASE
+    `).get(cleanIdentifier, cleanIdentifier.toLowerCase());
+
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return res.status(401).json({
+        error: 'Invalid Bureau credentials. Verify your operative handle and cipher.'
+      });
+    }
+
+    // Update last login
+    db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+    const token = crypto.randomBytes(32).toString('hex');
+
+    try {
+      db.prepare(`
+        INSERT INTO audit_trail (case_ref, officer, action, details)
+        VALUES (?, ?, ?, ?)
+      `).run(null, user.username, 'OPERATIVE_LOGIN', `Operative ${user.username} authenticated into the Bureau`);
+    } catch (e) {}
+
+    return res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      },
+      token,
+      rememberMe: !!rememberMe,
+      message: `Welcome back to active duty, Operative ${user.username}.`
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ error: 'Authentication failed: ' + err.message });
+  }
+});
+
+// Emergency Cipher Dispatch (Forgot Password)
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { username, email } = req.body;
+    const identifier = String(username || email || '').trim();
+
+    if (!identifier) {
+      return res.status(400).json({ error: 'Please enter your registered operative username or dispatch email.' });
+    }
+
+    const user = db.prepare(`
+      SELECT * FROM users 
+      WHERE username = ? COLLATE NOCASE OR email = ? COLLATE NOCASE
+    `).get(identifier, identifier.toLowerCase());
+
+    if (!user) {
+      return res.status(404).json({
+        error: `No commissioned operative found under "${identifier}". Check your spelling or enlist a new operative.`
+      });
+    }
+
+    // Generate renewed temporary password
+    const tempPassword = 'ARG-' + crypto.randomBytes(3).toString('hex').toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
+    const newHash = hashPassword(tempPassword);
+
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, user.id);
+
+    // Transmit email dispatch
+    const mailResult = await sendRecoveryMail(user.email, user.username, tempPassword);
+
+    // Mask email for user privacy display
+    const parts = user.email.split('@');
+    const local = parts[0];
+    const domain = parts[1] || '';
+    const maskedLocal = local.length <= 2 ? local + '***' : local[0] + '***' + local[local.length - 1];
+    const maskedEmail = `${maskedLocal}@${domain}`;
+
+    try {
+      db.prepare(`
+        INSERT INTO audit_trail (case_ref, officer, action, details)
+        VALUES (?, ?, ?, ?)
+      `).run(null, user.username, 'CIPHER_RENEWAL', `Emergency cipher dispatched to ${maskedEmail}`);
+    } catch (e) {}
+
+    return res.json({
+      success: true,
+      recipient: maskedEmail,
+      message: `A secure cipher recovery dispatch has been transmitted to ${maskedEmail}.`,
+      ...(mailResult.method === 'simulation' ? { dispatchNotice: `[Telegraph Simulation]: Temporary cipher is: ${tempPassword}` } : {})
+    });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    return res.status(500).json({ error: 'Failed to transmit recovery dispatch: ' + err.message });
+  }
+});
+
+// Verify active operative token / session
+app.get('/api/auth/me', (req, res) => {
+  try {
+    const username = req.query.username;
+    if (!username) {
+      return res.status(400).json({ error: 'Operative username required.' });
+    }
+
+    const user = db.prepare('SELECT id, username, email, created_at, last_login FROM users WHERE username = ? COLLATE NOCASE').get(String(username).trim());
+    if (!user) {
+      return res.status(404).json({ error: 'Operative not found in ledger.' });
+    }
+
+    return res.json({ success: true, user });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 // ==========================================
 // ROUTES: CASES

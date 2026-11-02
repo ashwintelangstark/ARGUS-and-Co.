@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import LandingPage from './components/LandingPage.jsx';
+import AuthView from './components/AuthView.jsx';
 import Header from './components/Header.jsx';
 import ThreeHqScene from './components/ThreeHqScene.jsx';
 import CaseFilesView from './components/CaseFilesView.jsx';
@@ -9,6 +11,17 @@ import ArchivesView from './components/ArchivesView.jsx';
 import ThreeCharacterModal from './components/ThreeCharacterModal.jsx';
 
 export default function App() {
+  // Application phase: 'landing' (opens first everywhere) | 'auth' (login/signup) | 'agency' (main app)
+  const [appPhase, setAppPhase] = useState('landing');
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('argus_user') || sessionStorage.getItem('argus_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const [activeView, setActiveView] = useState('headquarters');
   const [cases, setCases] = useState([]);
   const [selectedCaseRef, setSelectedCaseRef] = useState('');
@@ -48,12 +61,39 @@ export default function App() {
 
   const workingCase = cases.find(c => c.is_working_on === 1 || c.is_working_on === true) || null;
 
+  // Phase 1: Landing Page (First screen presented everywhere)
+  if (appPhase === 'landing') {
+    return (
+      <LandingPage
+        onEnterAgency={() => {
+          setAppPhase('auth');
+        }}
+      />
+    );
+  }
+
+  // Phase 2: Operative Credential Authentication (Sign In / Register / Forgot Password)
+  if (appPhase === 'auth') {
+    return (
+      <AuthView
+        onAuthSuccess={(user) => {
+          setCurrentUser(user);
+          setAppPhase('agency');
+        }}
+        onBackToLanding={() => setAppPhase('landing')}
+      />
+    );
+  }
+
+  // Phase 3: Active Bureau Investigation Suite
   return (
     <div id="app-container">
       {/* Top Navigation */}
       <Header
         activeView={activeView}
         onViewChange={(v) => setActiveView(v)}
+        currentUser={currentUser}
+        onExitToLanding={() => setAppPhase('landing')}
       />
 
       {/* Main View Area */}

@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -147,6 +148,20 @@ export function initDatabase() {
       action TEXT NOT NULL,
       details TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Operatives and Agency Users table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+      email TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      reset_token TEXT,
+      reset_expires DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login DATETIME
     );
   `);
 
@@ -305,6 +320,32 @@ function seedDefaultData() {
   insertAudit.run('ARG-1891-002', 'APEX', 'DOSSIER_OPENED', 'Critical threat tier assigned. Multi-agent surveillance activated.');
 
   console.log('[DB] Database seeded successfully.');
+}
+
+/**
+ * Secure PBKDF2 Password Hashing
+ */
+export function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+/**
+ * Timing-safe PBKDF2 Password Verification
+ */
+export function verifyPassword(password, stored) {
+  if (!stored || typeof stored !== 'string' || !stored.includes(':')) {
+    return false;
+  }
+  const [salt, originalHash] = stored.split(':');
+  if (!salt || !originalHash) return false;
+  const verifyHash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(originalHash, 'hex'), Buffer.from(verifyHash, 'hex'));
+  } catch (e) {
+    return false;
+  }
 }
 
 export default db;
