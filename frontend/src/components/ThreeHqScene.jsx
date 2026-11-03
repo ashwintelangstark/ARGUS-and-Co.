@@ -41,11 +41,11 @@ export default function ThreeHqScene({
   // Case details for the 3D board (Strictly linked to case currently being worked on)
   const [activeCaseDetails, setActiveCaseDetails] = useState(null);
 
-  const workingCase = cases.find(c => c.is_working_on === 1 || c.is_working_on === true) || null;
+  const workingCase = cases.find(c => (c.is_working_on === 1 || c.is_working_on === true) && c.status !== 'Solved' && c.status !== 'Archived') || null;
   const activeCase = workingCase;
 
   const metrics = {
-    openCases: cases.filter(c => c.status !== 'Solved').length,
+    openCases: cases.filter(c => c.status !== 'Solved' && c.status !== 'Archived').length,
     filesLogged: cases.reduce((acc, c) => acc + (c.evidence_count || 0), 0),
     reportsCount: cases.reduce((acc, c) => acc + (c.report_count || 0), 0)
   };

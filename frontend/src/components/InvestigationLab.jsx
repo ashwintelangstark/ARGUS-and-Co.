@@ -23,6 +23,8 @@ export default function InvestigationLab({
   const eventSourceRef = useRef(null);
   const scrollRef = useRef(null);
 
+  const activeCases = cases.filter(c => c.status !== 'Solved' && c.status !== 'Archived');
+
   // Fetch full case detail when selected
   const fetchCaseDetail = async (ref) => {
     if (!ref) {
@@ -35,6 +37,13 @@ export default function InvestigationLab({
       const res = await fetch(`/api/cases/${encodeURIComponent(ref)}`);
       const data = await res.json();
       if (data.success) {
+        // If the fetched case is Solved or Archived, it should not be active in the lab
+        if (data.case && (data.case.status === 'Solved' || data.case.status === 'Archived')) {
+          setActiveCase(null);
+          setEvidenceList([]);
+          setDeliberations([]);
+          return;
+        }
         setActiveCase(data.case);
         setEvidenceList(data.evidence || []);
         setDeliberations(data.deliberations || []);
@@ -45,14 +54,24 @@ export default function InvestigationLab({
   };
 
   useEffect(() => {
-    if (selectedCaseRef) {
+    const isRefActive = activeCases.some(c => c.case_ref === selectedCaseRef);
+    if (selectedCaseRef && isRefActive) {
       fetchCaseDetail(selectedCaseRef);
       connectSSE(selectedCaseRef);
+    } else {
+      // Clear out the lab when case is closed, archived, or no active case selected
+      setActiveCase(null);
+      setEvidenceList([]);
+      setDeliberations([]);
+      setIsConclaveRunning(false);
+      setActiveSpeaker(null);
+      setStatusMessage('Investigation Lab standing by. Select an active case dossier from Case Files to begin.');
+      if (eventSourceRef.current) eventSourceRef.current.close();
     }
     return () => {
       if (eventSourceRef.current) eventSourceRef.current.close();
     };
-  }, [selectedCaseRef]);
+  }, [selectedCaseRef, cases]);
 
   // Connect Server-Sent Events (SSE) for real-time live deliberation stream
   const connectSSE = (ref) => {
@@ -208,8 +227,10 @@ export default function InvestigationLab({
               onChange={(e) => onCaseChange(e.target.value)}
               className="p-1.5 px-3 bg-[#f5e9cf] text-[#24170f] font-elite text-xs border border-[#9b7b50] rounded focus:outline-none"
             >
-              <option value="">Choose a case dossier…</option>
-              {cases.map((c) => (
+              <option value="">
+                {activeCases.length > 0 ? 'Choose an active case dossier…' : 'No active cases under investigation (All closed)'}
+              </option>
+              {activeCases.map((c) => (
                 <option key={c.case_ref} value={c.case_ref}>
                   {c.case_ref} — {c.title}
                 </option>
@@ -275,8 +296,14 @@ export default function InvestigationLab({
                   </div>
                 </div>
               ) : (
-                <div className="py-12 text-center text-[#806344] font-elite text-xs">
-                  Choose a case dossier from the dropdown to initialize workbench.
+                <div className="py-14 text-center text-[#806344] font-elite text-xs flex flex-col items-center justify-center space-y-2.5">
+                  <div className="w-12 h-12 rounded-full border border-[#8a5d35] bg-[#24170f] flex items-center justify-center text-[#c69a50] shadow-inner">
+                    <Microscope size={22} />
+                  </div>
+                  <h4 className="font-rye text-sm text-[#4b2d1d]">Investigation Bench Clear</h4>
+                  <p className="max-w-xs text-[11px] leading-relaxed text-[#735336]">
+                    No active case dossier is currently loaded. Select an active case from the dropdown or register new files in the Case Files ledger.
+                  </p>
                 </div>
               )}
             </div>
@@ -285,8 +312,12 @@ export default function InvestigationLab({
             <div className="pt-4 border-t border-[#96744c]/40 mt-4 space-y-2">
               <button
                 onClick={() => handleLaunchConclave(false)}
-                disabled={!selectedCaseRef || isConclaveRunning}
-                className="w-full western-btn-gold py-2.5 font-elite text-xs font-bold rounded flex items-center justify-center gap-2 shadow-md"
+                disabled={!selectedCaseRef || !activeCase || isConclaveRunning}
+                className={`w-full py-2.5 font-elite text-xs font-bold rounded flex items-center justify-center gap-2 shadow-md ${
+                  !selectedCaseRef || !activeCase 
+                    ? 'western-btn opacity-50 cursor-not-allowed text-[#8a6847]' 
+                    : 'western-btn-gold'
+                }`}
               >
                 {isConclaveRunning ? (
                   <>
@@ -304,8 +335,12 @@ export default function InvestigationLab({
               {/* Re-Analyse Case with Alternative Vector */}
               <button
                 onClick={() => handleLaunchConclave(true)}
-                disabled={!selectedCaseRef || isConclaveRunning}
-                className="w-full western-btn py-2 text-xs font-elite font-bold rounded flex items-center justify-center gap-1.5 border-[#8a5d35] hover:border-[#c69a50]"
+                disabled={!selectedCaseRef || !activeCase || isConclaveRunning}
+                className={`w-full py-2 text-xs font-elite font-bold rounded flex items-center justify-center gap-1.5 border-[#8a5d35] ${
+                  !selectedCaseRef || !activeCase 
+                    ? 'western-btn opacity-40 cursor-not-allowed text-[#8a6847]' 
+                    : 'western-btn hover:border-[#c69a50]'
+                }`}
                 title="Discard baseline assumptions and re-analyse case using contrarian forensic and OSINT vector"
               >
                 <RefreshCw size={12} className={isConclaveRunning ? "animate-spin" : ""} />
@@ -314,7 +349,7 @@ export default function InvestigationLab({
 
               <div className="text-[10px] font-elite text-[#6b4e33] flex items-center justify-between pt-1">
                 <span className="truncate max-w-[280px]">Status: {statusMessage}</span>
-                {deliberations.length > 0 && (
+                {deliberations.length > 0 && activeCase && (
                   <button 
                     onClick={() => onViewReports(selectedCaseRef)}
                     className="text-[#854524] hover:underline font-bold flex items-center gap-1"
@@ -469,9 +504,16 @@ export default function InvestigationLab({
             )}
 
             {deliberations.length === 0 && !isConclaveRunning && (
-              <div className="py-20 text-center text-[#826444] font-elite">
-                <p>The deliberation floor is currently quiet.</p>
-                <p className="text-[11px] mt-1">Select a case dossier and click "Run Autonomous Bureau Conclave" to begin.</p>
+              <div className="py-20 text-center text-[#826444] font-elite flex flex-col items-center justify-center space-y-2">
+                <div className="w-10 h-10 rounded-full border border-[#8a5d35] bg-[#24170f] flex items-center justify-center text-[#c69a50] mb-1 opacity-70">
+                  <Sparkles size={18} />
+                </div>
+                <p className="font-rye text-sm text-[#4b2d1d]">The Deliberation Floor is Standing By</p>
+                <p className="text-[11px] max-w-sm text-[#735336]">
+                  {activeCase 
+                    ? 'Active case loaded. Click "Run Autonomous Bureau Conclave" above to convene the five specialist detectives.' 
+                    : 'No active case under investigation. Select an open case from Case Files to begin multi-agent deliberation.'}
+                </p>
               </div>
             )}
           </div>

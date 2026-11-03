@@ -496,6 +496,12 @@ app.put('/api/cases/:caseRef', (req, res) => {
       WHERE case_ref = ?
     `).run(updatedTitle, updatedPriority, updatedCategory, updatedStatus, updatedSummary, updatedNotes, updatedLeadOfficer, caseRef);
 
+    // If case is closed / archived, clear working state and wipe clues board
+    if (updatedStatus === 'Solved' || updatedStatus === 'Archived') {
+      db.prepare(`UPDATE cases SET is_working_on = 0 WHERE case_ref = ?`).run(caseRef);
+      db.prepare(`DELETE FROM clues WHERE case_ref = ?`).run(caseRef);
+    }
+
     db.prepare(`
       INSERT INTO audit_trail (case_ref, officer, action, details)
       VALUES (?, ?, ?, ?)
@@ -583,10 +589,13 @@ app.post('/api/cases/:caseRef/archive', (req, res) => {
       WHERE case_ref = ?
     `).run(caseRef);
 
+    // Empty clues and suspect web pins for the concluded case
+    db.prepare('DELETE FROM clues WHERE case_ref = ?').run(caseRef);
+
     db.prepare(`
       INSERT INTO audit_trail (case_ref, officer, action, details)
       VALUES (?, ?, ?, ?)
-    `).run(caseRef, 'ARGUS', 'CASE_ARCHIVED', `Case dossier "${caseData.title}" sealed and filed into permanent archives.`);
+    `).run(caseRef, 'ARGUS', 'CASE_ARCHIVED', `Case dossier "${caseData.title}" sealed, clues board cleared, and filed into permanent archives.`);
 
     res.json({ success: true, message: `Case ${caseRef} has been sealed and archived.` });
   } catch (err) {
@@ -905,17 +914,18 @@ app.post('/api/interrogate', async (req, res) => {
 
     const profile = AGENT_PROFILES[officerId] || AGENT_PROFILES.ARGUS;
 
-    // Resolve target active case
+    // Resolve target active case (excluding closed/solved cases)
     let targetCaseRef = caseRef;
     if (!targetCaseRef) {
-      const latest = db.prepare('SELECT case_ref FROM cases ORDER BY updated_at DESC LIMIT 1').get();
-      if (latest) targetCaseRef = latest.case_ref;
+      const latestActive = db.prepare("SELECT case_ref FROM cases WHERE is_working_on = 1 AND status NOT IN ('Solved', 'Archived') ORDER BY updated_at DESC LIMIT 1").get() ||
+                           db.prepare("SELECT case_ref FROM cases WHERE status NOT IN ('Solved', 'Archived') ORDER BY updated_at DESC LIMIT 1").get();
+      if (latestActive) targetCaseRef = latestActive.case_ref;
     }
 
     let caseContext = '';
     let caseItem = null;
     if (targetCaseRef) {
-      caseItem = db.prepare('SELECT * FROM cases WHERE case_ref = ?').get(targetCaseRef);
+      caseItem = db.prepare("SELECT * FROM cases WHERE case_ref = ? AND status NOT IN ('Solved', 'Archived')").get(targetCaseRef);
       if (caseItem) {
         const evidence = db.prepare('SELECT original_name, file_type, forensic_notes, extracted_text FROM evidence WHERE case_ref = ?').all(targetCaseRef);
         const clues = db.prepare('SELECT title, description, type FROM clues WHERE case_ref = ?').all(targetCaseRef);

@@ -28,16 +28,19 @@ export default function App() {
   const [inspectingAgent, setInspectingAgent] = useState(null);
   const [activeSpeaker, setActiveSpeaker] = useState(null);
 
-  const fetchCases = async () => {
+  const fetchCases = async (closedRef = null) => {
     try {
       const res = await fetch('/api/cases');
       const data = await res.json();
       if (data.success && data.cases) {
         setCases(data.cases);
-        if (data.cases.length === 0) {
+        const active = data.cases.filter(c => c.status !== 'Solved' && c.status !== 'Archived');
+        
+        // If a specific case was just closed, or if the selectedCaseRef is not an active case, reset it
+        if (closedRef && selectedCaseRef === closedRef) {
           setSelectedCaseRef('');
-        } else if (!data.cases.some(c => c.case_ref === selectedCaseRef)) {
-          setSelectedCaseRef(data.cases[0].case_ref);
+        } else if (!active.some(c => c.case_ref === selectedCaseRef)) {
+          setSelectedCaseRef(active.length > 0 ? active[0].case_ref : '');
         }
       }
     } catch (e) {
@@ -49,6 +52,11 @@ export default function App() {
     fetchCases();
   }, []);
 
+  const handleCaseClosed = (closedRef) => {
+    setSelectedCaseRef('');
+    fetchCases(closedRef);
+  };
+
   const handleOpenLabWithCase = (caseRef) => {
     setSelectedCaseRef(caseRef);
     setActiveView('lab');
@@ -59,7 +67,11 @@ export default function App() {
     setActiveView('reports');
   };
 
-  const workingCase = cases.find(c => c.is_working_on === 1 || c.is_working_on === true) || null;
+  const workingCase = cases.find(c => 
+    (c.is_working_on === 1 || c.is_working_on === true) && 
+    c.status !== 'Solved' && 
+    c.status !== 'Archived'
+  ) || null;
 
   const handleLogout = () => {
     localStorage.removeItem('argus_user');
@@ -130,6 +142,7 @@ export default function App() {
           <CaseFilesView
             cases={cases}
             onRefresh={fetchCases}
+            onCaseClosed={handleCaseClosed}
             onSelectCaseForLab={handleOpenLabWithCase}
           />
         )}
@@ -137,7 +150,7 @@ export default function App() {
         {activeView === 'lab' && (
           <InvestigationLab
             cases={cases}
-            selectedCaseRef={selectedCaseRef || workingCase?.case_ref || ''}
+            selectedCaseRef={selectedCaseRef}
             onCaseChange={(ref) => setSelectedCaseRef(ref)}
             onOpenOfficerStudio={(agentId) => setInspectingAgent(agentId)}
             onViewReports={handleViewReports}
@@ -169,6 +182,7 @@ export default function App() {
               setActiveView('lab');
             }}
             onRefreshCases={fetchCases}
+            onCaseClosed={handleCaseClosed}
           />
         )}
 

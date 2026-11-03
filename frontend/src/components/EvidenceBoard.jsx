@@ -33,7 +33,13 @@ export default function EvidenceBoard({
     try {
       const res = await fetch(`/api/cases/${encodeURIComponent(caseRef)}`);
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.case) {
+        if (data.case.status === 'Solved' || data.case.status === 'Archived') {
+          setCaseData(null);
+          setDeliberations([]);
+          setClues([]);
+          return;
+        }
         setCaseData(data.case);
         setDeliberations(data.deliberations || []);
       }
@@ -53,7 +59,20 @@ export default function EvidenceBoard({
     }
     try {
       setLoading(true);
-      fetchCaseDetail();
+      const caseRes = await fetch(`/api/cases/${encodeURIComponent(caseRef)}`);
+      const caseDataRes = await caseRes.json();
+      if (caseDataRes.success && caseDataRes.case) {
+        if (caseDataRes.case.status === 'Solved' || caseDataRes.case.status === 'Archived') {
+          setClues([]);
+          setCaseData(null);
+          setDeliberations([]);
+          setLoading(false);
+          return;
+        }
+        setCaseData(caseDataRes.case);
+        setDeliberations(caseDataRes.deliberations || []);
+      }
+
       const res = await fetch(`/api/cases/${encodeURIComponent(caseRef)}/clues`);
       const data = await res.json();
       if (data.success && data.clues) {

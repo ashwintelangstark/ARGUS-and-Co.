@@ -9,6 +9,7 @@ import {
 export default function CaseFilesView({ 
   cases = [], 
   onRefresh, 
+  onCaseClosed,
   onSelectCaseForLab 
 }) {
   const activeCases = cases.filter(c => c.status !== 'Solved' && c.status !== 'Archived');
@@ -93,7 +94,11 @@ export default function CaseFilesView({
       const data = await res.json();
       if (data.success) {
         setNotification(`Case ${ref} officially closed and archived.`);
-        if (typeof onRefresh === 'function') onRefresh();
+        if (typeof onCaseClosed === 'function') {
+          onCaseClosed(ref);
+        } else if (typeof onRefresh === 'function') {
+          onRefresh(ref);
+        }
       } else {
         alert(data.error || 'Failed to archive case.');
       }

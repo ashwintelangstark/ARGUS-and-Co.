@@ -11,7 +11,8 @@ export default function ReportsView({
   initialCaseRef = null,
   onNavigateToArchives,
   onReAnalyseCase,
-  onRefreshCases
+  onRefreshCases,
+  onCaseClosed
 }) {
   const [selectedCaseRef, setSelectedCaseRef] = useState(initialCaseRef || (cases[0]?.case_ref || ''));
   const [reports, setReports] = useState([]);
@@ -87,7 +88,11 @@ export default function ReportsView({
       const data = await res.json();
       if (data.success) {
         setActionStatus(`Case ${selectedCaseRef} sealed and moved to permanent archives.`);
-        if (typeof onRefreshCases === 'function') onRefreshCases();
+        if (typeof onCaseClosed === 'function') {
+          onCaseClosed(selectedCaseRef);
+        } else if (typeof onRefreshCases === 'function') {
+          onRefreshCases(selectedCaseRef);
+        }
         setTimeout(() => {
           if (typeof onNavigateToArchives === 'function') onNavigateToArchives();
         }, 1200);

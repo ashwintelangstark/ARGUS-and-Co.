@@ -131,8 +131,8 @@ function getOfflineInvestigativeFallback({ officerId, systemPrompt, messages }) 
   let caseRef = refMatch ? refMatch[1].trim() : null;
 
   if (!caseRef) {
-    const activeCase = db.prepare('SELECT case_ref FROM cases WHERE is_working_on = 1 ORDER BY updated_at DESC LIMIT 1').get() ||
-                       db.prepare('SELECT case_ref FROM cases ORDER BY updated_at DESC LIMIT 1').get();
+    const activeCase = db.prepare("SELECT case_ref FROM cases WHERE is_working_on = 1 AND status NOT IN ('Solved', 'Archived') ORDER BY updated_at DESC LIMIT 1").get() ||
+                       db.prepare("SELECT case_ref FROM cases WHERE status NOT IN ('Solved', 'Archived') ORDER BY updated_at DESC LIMIT 1").get();
     if (activeCase) caseRef = activeCase.case_ref;
   }
 
