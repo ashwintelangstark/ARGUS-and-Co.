@@ -225,6 +225,7 @@ app.post('/api/auth/signup', (req, res) => {
         username: cleanUser,
         email: cleanEmail
       },
+      passwordHash,
       token,
       message: `Operative ${cleanUser} successfully commissioned into ARGUS & Co.`
     });
@@ -237,7 +238,7 @@ app.post('/api/auth/signup', (req, res) => {
 // Authenticate Operative (Login)
 app.post('/api/auth/login', (req, res) => {
   try {
-    const { username, password, rememberMe } = req.body;
+    const { username, password, rememberMe, clientBackup } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Please provide both your operative handle and cipher password.' });
@@ -245,10 +246,32 @@ app.post('/api/auth/login', (req, res) => {
 
     const cleanIdentifier = String(username).trim();
 
-    const user = db.prepare(`
+    let user = db.prepare(`
       SELECT * FROM users 
       WHERE username = ? COLLATE NOCASE OR email = ? COLLATE NOCASE
     `).get(cleanIdentifier, cleanIdentifier.toLowerCase());
+
+    // Resilient serverless fallback: If SQLite instance was cold-started or partitioned on Vercel
+    // and this instance doesn't have the user yet, verify credentials against clientBackup!
+    if (!user && clientBackup && clientBackup.username && clientBackup.passwordHash) {
+      const cbUser = String(clientBackup.username).trim();
+      const cbEmail = String(clientBackup.email || '').trim().toLowerCase();
+      const matchesIdentifier = cleanIdentifier.toLowerCase() === cbUser.toLowerCase() ||
+                                cleanIdentifier.toLowerCase() === cbEmail;
+      
+      if (matchesIdentifier && verifyPassword(password, clientBackup.passwordHash)) {
+        try {
+          const ins = db.prepare(`
+            INSERT OR REPLACE INTO users (username, email, password_hash, created_at, last_login)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `).run(cbUser, cbEmail || `${cbUser.toLowerCase()}@agency.bureau`, clientBackup.passwordHash);
+          user = db.prepare('SELECT * FROM users WHERE id = ?').get(ins.lastInsertRowid);
+          console.log(`[Auth] Resiliently restored operative "${cbUser}" into active SQLite instance.`);
+        } catch (syncErr) {
+          console.warn('[User sync warning]:', syncErr.message);
+        }
+      }
+    }
 
     if (!user || !verifyPassword(password, user.password_hash)) {
       return res.status(401).json({
@@ -274,6 +297,7 @@ app.post('/api/auth/login', (req, res) => {
         username: user.username,
         email: user.email
       },
+      passwordHash: user.password_hash,
       token,
       rememberMe: !!rememberMe,
       message: `Welcome back to active duty, Operative ${user.username}.`

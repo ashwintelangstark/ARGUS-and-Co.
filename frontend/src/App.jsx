@@ -61,11 +61,30 @@ export default function App() {
 
   const workingCase = cases.find(c => c.is_working_on === 1 || c.is_working_on === true) || null;
 
+  const handleLogout = () => {
+    localStorage.removeItem('argus_user');
+    localStorage.removeItem('argus_token');
+    localStorage.removeItem('argus_remembered_cipher');
+    sessionStorage.removeItem('argus_user');
+    sessionStorage.removeItem('argus_token');
+    setCurrentUser(null);
+    setAppPhase('auth');
+  };
+
   // Phase 1: Landing Page (First screen presented everywhere)
   if (appPhase === 'landing') {
     return (
       <LandingPage
+        currentUser={currentUser}
         onEnterAgency={() => {
+          // If already authenticated and remembered, enter directly into the Bureau Agency!
+          if (currentUser) {
+            setAppPhase('agency');
+          } else {
+            setAppPhase('auth');
+          }
+        }}
+        onSwitchUser={() => {
           setAppPhase('auth');
         }}
       />
@@ -94,6 +113,7 @@ export default function App() {
         onViewChange={(v) => setActiveView(v)}
         currentUser={currentUser}
         onExitToLanding={() => setAppPhase('landing')}
+        onLogout={handleLogout}
       />
 
       {/* Main View Area */}

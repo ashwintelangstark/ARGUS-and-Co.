@@ -18,12 +18,29 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
   const [successMsg, setSuccessMsg] = useState('');
   const [dispatchInfo, setDispatchInfo] = useState('');
 
-  // Form fields
-  const [username, setUsername] = useState('');
+  // Form fields with persistent "Remember Me" memory
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('argus_remembered_username') || '';
+  });
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(() => {
+    return localStorage.getItem('argus_remembered_cipher') || '';
+  });
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(() => {
+    const saved = localStorage.getItem('argus_remember_me');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  // Check for existing remembered operative session
+  const [rememberedUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('argus_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
 
   const resetForm = () => {
     setError('');
@@ -43,20 +60,27 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
     setError('');
     setSuccessMsg('');
 
-    if (!username.trim() || !password) {
+    const cleanUsername = username.trim();
+    if (!cleanUsername || !password) {
       setError('Please provide both your operative handle and cipher password.');
       return;
     }
 
     setLoading(true);
     try {
+      // Retrieve local operative vault backup if present on this device
+      const vault = JSON.parse(localStorage.getItem('argus_operative_vault') || '{}');
+      const backupEntry = vault[cleanUsername.toLowerCase()] || 
+        Object.values(vault).find(v => v.email?.toLowerCase() === cleanUsername.toLowerCase());
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: username.trim(),
+          username: cleanUsername,
           password,
-          rememberMe
+          rememberMe,
+          clientBackup: backupEntry || null
         })
       });
 
@@ -65,20 +89,62 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
         throw new Error(data.error || 'Authentication rejected by Bureau Registry.');
       }
 
+      // Update client operative vault with fresh credentials
+      const updatedVault = { 
+        ...vault, 
+        [data.user.username.toLowerCase()]: {
+          id: data.user.id,
+          username: data.user.username,
+          email: data.user.email,
+          passwordHash: data.passwordHash || backupEntry?.passwordHash,
+          token: data.token
+        }
+      };
+      localStorage.setItem('argus_operative_vault', JSON.stringify(updatedVault));
+
       // Store session according to Remember Me preference
       if (rememberMe) {
         localStorage.setItem('argus_user', JSON.stringify(data.user));
         localStorage.setItem('argus_token', data.token);
+        localStorage.setItem('argus_remembered_username', cleanUsername);
+        localStorage.setItem('argus_remembered_cipher', password);
+        localStorage.setItem('argus_remember_me', 'true');
         sessionStorage.removeItem('argus_user');
       } else {
         sessionStorage.setItem('argus_user', JSON.stringify(data.user));
         sessionStorage.setItem('argus_token', data.token);
         localStorage.removeItem('argus_user');
+        localStorage.removeItem('argus_remembered_username');
+        localStorage.removeItem('argus_remembered_cipher');
+        localStorage.setItem('argus_remember_me', 'false');
       }
 
       bureauAudio.cameraShutter();
       onAuthSuccess(data.user);
     } catch (err) {
+      // Local fallback if offline or network hiccup, and vault has valid backup
+      const vault = JSON.parse(localStorage.getItem('argus_operative_vault') || '{}');
+      const backupEntry = vault[cleanUsername.toLowerCase()] || 
+        Object.values(vault).find(v => v.email?.toLowerCase() === cleanUsername.toLowerCase());
+
+      if (backupEntry && (err.message.includes('fetch') || err.message.includes('Network') || err.message.includes('Failed to fetch'))) {
+        console.warn('Authenticating via local operative vault backup:', backupEntry.username);
+        const fallbackUser = {
+          id: backupEntry.id,
+          username: backupEntry.username,
+          email: backupEntry.email
+        };
+        if (rememberMe) {
+          localStorage.setItem('argus_user', JSON.stringify(fallbackUser));
+          localStorage.setItem('argus_token', backupEntry.token);
+          localStorage.setItem('argus_remembered_username', cleanUsername);
+          localStorage.setItem('argus_remembered_cipher', password);
+        }
+        bureauAudio.cameraShutter();
+        onAuthSuccess(fallbackUser);
+        return;
+      }
+
       setError(err.message);
     } finally {
       setLoading(false);
@@ -91,12 +157,15 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
     setError('');
     setSuccessMsg('');
 
-    if (!username.trim() || !email.trim() || !password || !confirmPassword) {
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim();
+
+    if (!cleanUsername || !cleanEmail || !password || !confirmPassword) {
       setError('All credential registration fields are required.');
       return;
     }
 
-    if (username.trim().length < 3) {
+    if (cleanUsername.length < 3) {
       setError('Operative handle must be at least 3 characters.');
       return;
     }
@@ -117,8 +186,8 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: username.trim(),
-          email: email.trim(),
+          username: cleanUsername,
+          email: cleanEmail,
           password,
           confirmPassword
         })
@@ -129,9 +198,33 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
         throw new Error(data.error || 'Failed to enlist operative.');
       }
 
-      // Auto save credentials
-      localStorage.setItem('argus_user', JSON.stringify(data.user));
-      localStorage.setItem('argus_token', data.token);
+      // Store in operative vault
+      const vault = JSON.parse(localStorage.getItem('argus_operative_vault') || '{}');
+      vault[data.user.username.toLowerCase()] = {
+        id: data.user.id,
+        username: data.user.username,
+        email: data.user.email,
+        passwordHash: data.passwordHash,
+        token: data.token
+      };
+      localStorage.setItem('argus_operative_vault', JSON.stringify(vault));
+
+      // Save credentials according to Remember Me
+      if (rememberMe) {
+        localStorage.setItem('argus_user', JSON.stringify(data.user));
+        localStorage.setItem('argus_token', data.token);
+        localStorage.setItem('argus_remembered_username', cleanUsername);
+        localStorage.setItem('argus_remembered_cipher', password);
+        localStorage.setItem('argus_remember_me', 'true');
+        sessionStorage.removeItem('argus_user');
+      } else {
+        sessionStorage.setItem('argus_user', JSON.stringify(data.user));
+        sessionStorage.setItem('argus_token', data.token);
+        localStorage.removeItem('argus_user');
+        localStorage.removeItem('argus_remembered_username');
+        localStorage.removeItem('argus_remembered_cipher');
+        localStorage.setItem('argus_remember_me', 'false');
+      }
 
       bureauAudio.cameraShutter();
       onAuthSuccess(data.user);
@@ -294,6 +387,62 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
             OPERATIVE CREDENTIAL GATEWAY
           </div>
         </div>
+
+        {/* Remembered Active Operative Quick Resume */}
+        {rememberedUser && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(62, 38, 21, 0.95), rgba(28, 17, 10, 0.95))',
+            border: '1px solid #d5a45b',
+            padding: '12px 14px',
+            borderRadius: '2px',
+            marginBottom: '20px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div>
+              <div style={{ fontFamily: "'Special Elite', monospace", fontSize: '11px', color: '#f5e4c3' }}>
+                ACTIVE OPERATIVE: <strong style={{ color: '#facc15' }}>{rememberedUser.username}</strong>
+              </div>
+              <div style={{ fontSize: '10px', color: '#a8865e', fontFamily: "'DM Sans', sans-serif" }}>
+                {rememberedUser.email} · Credentials remembered
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                bureauAudio.cameraShutter();
+                onAuthSuccess(rememberedUser);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #e0bb77, #a36d31)',
+                border: '1px solid #f0d49a',
+                color: '#1b1008',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '1px',
+                padding: '7px 12px',
+                cursor: 'pointer',
+                borderRadius: '2px',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(213, 164, 91, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              RESUME DUTY ↗
+            </button>
+          </div>
+        )}
 
         {/* Mode Selector Tabs */}
         <div style={{
@@ -751,6 +900,37 @@ export default function AuthView({ onAuthSuccess, onBackToLanding }) {
                   onBlur={(e) => e.target.style.borderColor = '#78502c'}
                 />
               </div>
+            </div>
+
+            {/* Remember Me Option (Signup) */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '22px',
+              cursor: 'pointer'
+            }} onClick={() => setRememberMe(!rememberMe)}>
+              <div style={{
+                width: '18px',
+                height: '18px',
+                border: '1px solid #8a6035',
+                background: rememberMe ? '#8a6035' : '#150d08',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '2px',
+                transition: 'all 0.15s'
+              }}>
+                {rememberMe && <Check size={14} style={{ color: '#150d08', strokeWidth: 3 }} />}
+              </div>
+              <span style={{
+                fontFamily: "'Special Elite', monospace",
+                fontSize: '12px',
+                color: '#bba17c',
+                userSelect: 'none'
+              }}>
+                Remember this operative session
+              </span>
             </div>
 
             <button

@@ -102,7 +102,7 @@ const DETECTIVES = [
   }
 ];
 
-export default function LandingPage({ onEnterAgency }) {
+export default function LandingPage({ onEnterAgency, currentUser, onSwitchUser }) {
   const containerRef = useRef(null);
   const heroRef = useRef(null);
   const sealRef = useRef(null);
@@ -410,9 +410,50 @@ export default function LandingPage({ onEnterAgency }) {
           <a href="#agents" onClick={(e) => { e.preventDefault(); scrollToSection('agents'); }}>DETECTIVES</a>
           <a href="#capabilities" onClick={(e) => { e.preventDefault(); scrollToSection('capabilities'); }}>CAPABILITIES</a>
           <a href="#bureau" onClick={(e) => { e.preventDefault(); scrollToSection('bureau'); }}>THE BUREAU</a>
-          <button className="btn cursor-pointer" onClick={handleAction}>
-            ENTER THE AGENCY ↗
-          </button>
+          {currentUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button 
+                className="btn cursor-pointer" 
+                onClick={handleAction}
+                title={`Enter active agency session as Operative ${currentUser.username}`}
+              >
+                ENTER AS {currentUser.username.toUpperCase()} ↗
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  bureauAudio.typewriterClick();
+                  if (onSwitchUser) onSwitchUser();
+                }}
+                style={{
+                  background: 'rgba(38, 24, 15, 0.85)',
+                  border: '1px solid #78502c',
+                  color: '#d5a45b',
+                  fontSize: '11px',
+                  fontFamily: "'Special Elite', monospace",
+                  padding: '7px 11px',
+                  cursor: 'pointer',
+                  borderRadius: '2px',
+                  transition: 'all 0.15s'
+                }}
+                title="Sign in with a different operative credential"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#d5a45b';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#78502c';
+                  e.currentTarget.style.color = '#d5a45b';
+                }}
+              >
+                SWITCH OPERATIVE
+              </button>
+            </div>
+          ) : (
+            <button className="btn cursor-pointer" onClick={handleAction}>
+              ENTER THE AGENCY ↗
+            </button>
+          )}
         </div>
       </nav>
 
@@ -431,7 +472,7 @@ export default function LandingPage({ onEnterAgency }) {
             </p>
             <div className="actions">
               <button className="btn cursor-pointer" onClick={handleAction}>
-                OPEN THE CASE ROOM ↗
+                {currentUser ? `RESUME INVESTIGATION (${currentUser.username.toUpperCase()}) ↗` : 'OPEN THE CASE ROOM ↗'}
               </button>
               <a className="textlink cursor-pointer" href="#agents" onClick={(e) => { e.preventDefault(); scrollToSection('agents'); }}>
                 MEET THE DETECTIVES ↓
@@ -912,7 +953,7 @@ export default function LandingPage({ onEnterAgency }) {
             <p>Enter headquarters, open a dossier, and put the ARGUS & Co. investigative unit to work.</p>
           </div>
           <button className="btn cursor-pointer" onClick={handleAction}>
-            ENTER HEADQUARTERS ↗
+            {currentUser ? `ENTER HEADQUARTERS AS ${currentUser.username.toUpperCase()} ↗` : 'ENTER HEADQUARTERS ↗'}
           </button>
         </section>
       </main>

@@ -6,7 +6,8 @@ export default function Header({
   activeView, 
   onViewChange,
   currentUser,
-  onExitToLanding 
+  onExitToLanding,
+  onLogout
 }) {
   const [timeStr, setTimeStr] = useState('');
 
@@ -67,9 +68,41 @@ export default function Header({
         <span className="dot"></span>
         <span>BUREAU STATUS: ON DUTY</span>
         {currentUser && (
-          <span style={{ color: '#d5a45b', fontFamily: "'Special Elite', monospace", fontSize: '11px', borderLeft: '1px solid #78502c', paddingLeft: '8px' }}>
-            OPERATIVE: {currentUser.username}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid #78502c', paddingLeft: '8px' }}>
+            <span style={{ color: '#d5a45b', fontFamily: "'Special Elite', monospace", fontSize: '11px' }}>
+              OPERATIVE: {currentUser.username}
+            </span>
+            {onLogout && (
+              <button
+                onClick={() => {
+                  bureauAudio.typewriterClick();
+                  onLogout();
+                }}
+                title="Conclude operative duty and switch account"
+                style={{
+                  background: 'rgba(60, 25, 18, 0.85)',
+                  border: '1px solid #8e3e2b',
+                  color: '#fca5a5',
+                  padding: '2px 6px',
+                  fontSize: '9px',
+                  fontFamily: "'Special Elite', monospace",
+                  cursor: 'pointer',
+                  borderRadius: '2px',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#ef4444';
+                  e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#8e3e2b';
+                  e.currentTarget.style.color = '#fca5a5';
+                }}
+              >
+                LOG OUT
+              </button>
+            )}
+          </div>
         )}
         <span style={{ opacity: 0.75 }}>{timeStr}</span>
         {onExitToLanding && (
