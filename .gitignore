@@ -23,5 +23,6 @@ backend/data/*.sqlite-wal
 
 # Vite local build artifacts
 frontend/.vite/
+.firebase/
 .meta-panel-trigger
 meta.bat
