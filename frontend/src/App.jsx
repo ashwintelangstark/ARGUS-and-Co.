@@ -30,13 +30,48 @@ export default function App() {
 
   const fetchCases = async (closedRef = null) => {
     try {
-      const res = await fetch('/api/cases');
-      const data = await res.json();
-      if (data.success && data.cases) {
+      // 1. Check if logged-in operative has saved case vault in localStorage
+      let clientCases = [];
+      const username = currentUser?.username;
+      if (username) {
+        try {
+          const savedVault = localStorage.getItem(`argus_vault_cases_${username}`);
+          if (savedVault) clientCases = JSON.parse(savedVault);
+        } catch (e) {}
+      }
+
+      let data;
+      // If client has cached cases, sync with server to ensure serverless database has them
+      if (username && clientCases.length > 0) {
+        try {
+          const syncRes = await fetch('/api/cases/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, clientCases })
+          });
+          data = await syncRes.json();
+        } catch (e) {
+          const res = await fetch('/api/cases');
+          data = await res.json();
+        }
+      } else {
+        const res = await fetch('/api/cases');
+        data = await res.json();
+      }
+
+      if (data && data.success && data.cases) {
         setCases(data.cases);
+
+        // Update client vault backup for this user
+        if (username) {
+          try {
+            localStorage.setItem(`argus_vault_cases_${username}`, JSON.stringify(data.cases));
+          } catch (e) {}
+        }
+
         const active = data.cases.filter(c => c.status !== 'Solved' && c.status !== 'Archived');
         
-        // If a specific case was just closed, or if the selectedCaseRef is not an active case, reset it
+        // If a specific case was just closed/deleted, or if the selectedCaseRef is not an active case, reset it
         if (closedRef && selectedCaseRef === closedRef) {
           setSelectedCaseRef('');
         } else if (!active.some(c => c.case_ref === selectedCaseRef)) {
@@ -50,11 +85,25 @@ export default function App() {
 
   useEffect(() => {
     fetchCases();
-  }, []);
+  }, [currentUser?.username]);
 
   const handleCaseClosed = (closedRef) => {
     setSelectedCaseRef('');
     fetchCases(closedRef);
+  };
+
+  const handleCaseDeleted = (deletedRef) => {
+    const username = currentUser?.username;
+    if (username) {
+      try {
+        const savedVault = localStorage.getItem(`argus_vault_cases_${username}`);
+        if (savedVault) {
+          const list = JSON.parse(savedVault).filter(c => c.case_ref !== deletedRef);
+          localStorage.setItem(`argus_vault_cases_${username}`, JSON.stringify(list));
+        }
+      } catch (e) {}
+    }
+    handleCaseClosed(deletedRef);
   };
 
   const handleOpenLabWithCase = (caseRef) => {
@@ -141,8 +190,10 @@ export default function App() {
         {activeView === 'casefiles' && (
           <CaseFilesView
             cases={cases}
+            currentUser={currentUser}
             onRefresh={fetchCases}
             onCaseClosed={handleCaseClosed}
+            onCaseDeleted={handleCaseDeleted}
             onSelectCaseForLab={handleOpenLabWithCase}
           />
         )}
@@ -191,6 +242,7 @@ export default function App() {
             cases={cases}
             onSelectCase={handleOpenLabWithCase}
             onRefresh={fetchCases}
+            onCaseDeleted={handleCaseDeleted}
           />
         )}
       </main>

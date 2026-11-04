@@ -442,31 +442,109 @@ app.get('/api/cases/:caseRef', (req, res) => {
 // Create new case dossier
 app.post('/api/cases', (req, res) => {
   try {
-    const { case_ref, title, priority = 'High', category = 'Classified Investigation', summary = '', notes = '' } = req.body;
+    let { case_ref, title, priority = 'High', category = 'Classified Investigation', summary = '', notes = '', created_by = 'COMMAND' } = req.body;
 
-    if (!case_ref || !title) {
-      return res.status(400).json({ success: false, error: 'case_ref and title are required' });
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, error: 'Case title is required' });
     }
 
+    title = title.trim();
+
+    // Auto-generate case_ref if missing or empty
+    if (!case_ref || !case_ref.trim()) {
+      const allCases = db.prepare('SELECT case_ref FROM cases').all();
+      let maxNum = 0;
+      for (const c of allCases) {
+        const match = c.case_ref.match(/ARG-1891-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+      case_ref = `ARG-1891-${String(maxNum + 1).padStart(3, '0')}`;
+    } else {
+      case_ref = case_ref.trim();
+    }
+
+    // If case_ref already exists, make it unique dynamically instead of rejecting
     const existing = db.prepare('SELECT id FROM cases WHERE case_ref = ?').get(case_ref);
     if (existing) {
-      return res.status(409).json({ success: false, error: 'Case reference already exists' });
+      let counter = 1;
+      let candidate = `${case_ref}-${counter}`;
+      while (db.prepare('SELECT id FROM cases WHERE case_ref = ?').get(candidate)) {
+        counter++;
+        candidate = `${case_ref}-${counter}`;
+      }
+      case_ref = candidate;
     }
 
     const stmt = db.prepare(`
-      INSERT INTO cases (case_ref, title, priority, category, summary, notes)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO cases (case_ref, title, priority, category, summary, notes, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(case_ref, title, priority, category, summary, notes);
+    stmt.run(case_ref, title, priority, category, summary, notes, created_by);
 
     db.prepare(`
       INSERT INTO audit_trail (case_ref, officer, action, details)
       VALUES (?, ?, ?, ?)
-    `).run(case_ref, 'ARGUS', 'CASE_CREATED', `Case dossier "${title}" initialized.`);
+    `).run(case_ref, 'ARGUS', 'CASE_CREATED', `Case dossier "${title}" initialized by ${created_by}.`);
 
     res.status(201).json({ success: true, case_ref, message: 'Case created successfully' });
   } catch (err) {
     console.error('Error creating case:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Resilient Serverless Case Vault Sync
+app.post('/api/cases/sync', (req, res) => {
+  try {
+    const { username, clientCases = [] } = req.body;
+    if (!username) return res.status(400).json({ success: false, error: 'Username required' });
+
+    // If client provided cases and database is missing any of them, restore them
+    if (Array.isArray(clientCases) && clientCases.length > 0) {
+      for (const c of clientCases) {
+        if (!c.case_ref || !c.title) continue;
+        const exists = db.prepare('SELECT id FROM cases WHERE case_ref = ?').get(c.case_ref);
+        if (!exists) {
+          db.prepare(`
+            INSERT INTO cases (case_ref, title, priority, category, status, summary, notes, lead_officer, created_by, is_working_on, conclave_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            c.case_ref,
+            c.title,
+            c.priority || 'High',
+            c.category || 'Classified Investigation',
+            c.status || 'Active',
+            c.summary || '',
+            c.notes || '',
+            c.lead_officer || 'ARGUS',
+            username,
+            c.is_working_on ? 1 : 0,
+            c.conclave_count || 0
+          );
+        }
+      }
+    }
+
+    const cases = db.prepare(`
+      SELECT 
+        c.*,
+        COUNT(DISTINCT e.id) as evidence_count,
+        COUNT(DISTINCT cl.id) as clues_count,
+        COUNT(DISTINCT r.id) as report_count
+      FROM cases c
+      LEFT JOIN evidence e ON c.case_ref = e.case_ref
+      LEFT JOIN clues cl ON c.case_ref = cl.case_ref
+      LEFT JOIN reports r ON c.case_ref = r.case_ref
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `).all();
+
+    res.json({ success: true, cases });
+  } catch (err) {
+    console.error('Error syncing cases:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -532,12 +610,27 @@ app.delete('/api/cases/:caseRef', (req, res) => {
       }
     }
 
+    // Explicitly purge all associated records from child tables to prevent foreign key errors or orphaned data
+    db.prepare('DELETE FROM evidence WHERE case_ref = ?').run(caseRef);
+    db.prepare('DELETE FROM clues WHERE case_ref = ?').run(caseRef);
+    db.prepare('DELETE FROM deliberations WHERE case_ref = ?').run(caseRef);
+    db.prepare('DELETE FROM reports WHERE case_ref = ?').run(caseRef);
+    db.prepare('DELETE FROM audit_trail WHERE case_ref = ?').run(caseRef);
     db.prepare('DELETE FROM cases WHERE case_ref = ?').run(caseRef);
-    db.prepare('INSERT INTO audit_trail (case_ref, officer, action, details) VALUES (?, ?, ?, ?)').run(
-      caseRef, 'COMMAND', 'CASE_DELETED', `Case ${caseRef} purged from active ledger.`
-    );
 
-    res.json({ success: true, message: `Case ${caseRef} deleted` });
+    // Close any active SSE connections for this deleted case
+    if (sseClients.has(caseRef)) {
+      const clientSet = sseClients.get(caseRef);
+      clientSet.forEach(clientRes => {
+        try {
+          clientRes.write(`data: ${JSON.stringify({ type: 'deleted', message: 'Case dossier deleted.' })}\n\n`);
+          clientRes.end();
+        } catch (e) {}
+      });
+      sseClients.delete(caseRef);
+    }
+
+    res.json({ success: true, message: `Case ${caseRef} permanently purged from Bureau database.` });
   } catch (err) {
     console.error('Error deleting case:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -634,7 +727,7 @@ app.post('/api/cases/:caseRef/reopen', (req, res) => {
 // ==========================================
 
 // Upload evidence files
-app.post('/api/cases/:caseRef/evidence', upload.array('files', 10), async (req, res) => {
+app.post('/api/cases/:caseRef/evidence', upload.array('files', 50), async (req, res) => {
   try {
     const { caseRef } = req.params;
     const { notes = '', assigned_officer = 'LUTKIN' } = req.body;
@@ -1051,11 +1144,13 @@ if (!process.env.VERCEL && fs.existsSync(frontendDist)) {
 // Export Express app
 export default app;
 
-// Start HTTP server for Vercel Express service & local development
-app.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`★ ARGUS and Co. Investigation Bureau API is active`);
-  console.log(`★ Port: http://localhost:${PORT}`);
-  console.log(`★ Free AI Models Connected via OpenRouter`);
-  console.log(`======================================================\n`);
-});
+// Start HTTP server for local development (do not call listen in Vercel serverless functions)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`★ ARGUS and Co. Investigation Bureau API is active`);
+    console.log(`★ Port: http://localhost:${PORT}`);
+    console.log(`★ Free AI Models Connected via OpenRouter`);
+    console.log(`======================================================\n`);
+  });
+}

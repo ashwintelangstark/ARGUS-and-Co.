@@ -8,12 +8,27 @@ import {
 
 export default function CaseFilesView({ 
   cases = [], 
+  currentUser = null,
   onRefresh, 
   onCaseClosed,
+  onCaseDeleted,
   onSelectCaseForLab 
 }) {
   const activeCases = cases.filter(c => c.status !== 'Solved' && c.status !== 'Archived');
-  const [caseRef, setCaseRef] = useState(`ARG-1891-00${cases.length + 1}`);
+
+  const getNextCaseRef = (caseList = []) => {
+    let maxNum = 0;
+    for (const c of caseList) {
+      const match = c.case_ref?.match(/ARG-1891-(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+    return `ARG-1891-${String(maxNum + 1).padStart(3, '0')}`;
+  };
+
+  const [caseRef, setCaseRef] = useState(() => getNextCaseRef(cases));
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('High');
   const [category, setCategory] = useState('Classified Investigation');
@@ -22,6 +37,13 @@ export default function CaseFilesView({
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+
+  // Sync caseRef default if current caseRef is already taken or cases change
+  React.useEffect(() => {
+    if (!caseRef || cases.some(c => c.case_ref === caseRef)) {
+      setCaseRef(getNextCaseRef(cases));
+    }
+  }, [cases]);
 
   // Edit Case State
   const [editingCase, setEditingCase] = useState(null);
@@ -111,15 +133,18 @@ export default function CaseFilesView({
   // File Handling
   const handleFileDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
-    if (e.dataTransfer?.files) {
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
       addFiles(Array.from(e.dataTransfer.files));
     }
   };
 
   const handleFileInput = (e) => {
-    if (e.target.files) {
+    if (e.target.files && e.target.files.length > 0) {
       addFiles(Array.from(e.target.files));
+      // CRITICAL: Clear target value so dropping or selecting the exact same files again triggers input
+      e.target.value = '';
     }
   };
 
@@ -127,7 +152,8 @@ export default function CaseFilesView({
     const valid = [];
 
     for (const f of files) {
-      if (!pendingFiles.some(x => x.name === f.name && x.size === f.size)) {
+      // Allow adding files even if used in a past case; only deduplicate within the current pending intake list
+      if (!pendingFiles.some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) {
         valid.push(f);
       }
     }
@@ -172,13 +198,15 @@ export default function CaseFilesView({
   // Submit new Case Dossier & Upload Evidence
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!caseRef.trim() || !title.trim()) {
-      alert('Case Reference and Case Title are required.');
+    if (!title.trim()) {
+      alert('Case Title is required.');
       return;
     }
 
     setIsSubmitting(true);
     bureauAudio.typewriterClick();
+
+    const targetRef = caseRef.trim() || getNextCaseRef(cases);
 
     try {
       // 1. Create Case record
@@ -186,12 +214,13 @@ export default function CaseFilesView({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          case_ref: caseRef.trim(),
+          case_ref: targetRef,
           title: title.trim(),
           priority,
           category,
           summary: notes.slice(0, 200),
-          notes
+          notes,
+          created_by: currentUser?.username || 'COMMAND'
         })
       });
 
@@ -200,31 +229,33 @@ export default function CaseFilesView({
         throw new Error(caseData.error || 'Failed to create case');
       }
 
+      const finalCaseRef = caseData.case_ref || targetRef;
+
       // 2. Upload Evidence Files if any
       if (pendingFiles.length > 0) {
         const formData = new FormData();
         pendingFiles.forEach(f => formData.append('files', f));
-        formData.append('notes', `Evidence logged at case intake for ${caseRef}`);
+        formData.append('notes', `Evidence logged at case intake for ${finalCaseRef}`);
         formData.append('assigned_officer', 'LUTKIN');
 
-        const uploadRes = await fetch(`/api/cases/${encodeURIComponent(caseRef)}/evidence`, {
+        const uploadRes = await fetch(`/api/cases/${encodeURIComponent(finalCaseRef)}/evidence`, {
           method: 'POST',
           body: formData
         });
         const uploadData = await uploadRes.json();
         if (!uploadData.success) {
-          console.warn('Upload error:', uploadData.error);
+          console.warn('Upload warning:', uploadData.error);
         }
       }
 
       bureauAudio.conclaveChime();
-      setNotification(`Dossier ${caseRef} registered and locked into the Bureau Ledger.`);
+      setNotification(`Dossier ${finalCaseRef} registered and locked into the Bureau Ledger.`);
       
       // Reset form
-      setCaseRef(`ARG-1891-00${cases.length + 2}`);
       setTitle('');
       setNotes('');
       setPendingFiles([]);
+      setCaseRef(getNextCaseRef([...cases, { case_ref: finalCaseRef }]));
 
       if (typeof onRefresh === 'function') onRefresh();
     } catch (err) {
@@ -236,13 +267,25 @@ export default function CaseFilesView({
 
   // Delete Case
   const handleDeleteCase = async (ref) => {
-    if (!confirm(`Are you certain you wish to delete and purge Case Dossier ${ref}?`)) return;
+    if (!confirm(`Are you certain you wish to permanently delete and purge Case Dossier ${ref}? This will erase all evidence and deliberations from the database.`)) return;
     try {
-      await fetch(`/api/cases/${encodeURIComponent(ref)}`, { method: 'DELETE' });
+      const res = await fetch(`/api/cases/${encodeURIComponent(ref)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to purge case from database.');
+      }
       bureauAudio.cameraShutter();
-      if (typeof onRefresh === 'function') onRefresh();
+      setNotification(`Case ${ref} permanently purged from Bureau database.`);
+      
+      if (typeof onCaseDeleted === 'function') {
+        onCaseDeleted(ref);
+      } else if (typeof onCaseClosed === 'function') {
+        onCaseClosed(ref);
+      } else if (typeof onRefresh === 'function') {
+        onRefresh(ref);
+      }
     } catch (err) {
-      alert(err.message);
+      alert(`Error deleting case: ${err.message}`);
     }
   };
 
@@ -339,8 +382,9 @@ export default function CaseFilesView({
                   PHYSICAL & DIGITAL EVIDENCE DEPOSITORY
                 </label>
                 <div
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                  onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
                   onDrop={handleFileDrop}
                   onClick={() => document.getElementById('evidenceUploadInput').click()}
                   className={`border-2 border-dashed p-6 text-center rounded cursor-pointer transition-all ${

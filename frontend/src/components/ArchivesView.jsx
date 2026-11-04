@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { bureauAudio } from '../utils/audio.js';
-import { Archive, Search, Shield, Clock, FileCheck, ArrowUpRight, RotateCcw } from 'lucide-react';
+import { Archive, Search, Shield, Clock, FileCheck, ArrowUpRight, RotateCcw, Trash2 } from 'lucide-react';
 
-export default function ArchivesView({ cases = [], onSelectCase, onRefresh }) {
+export default function ArchivesView({ cases = [], onSelectCase, onRefresh, onCaseDeleted }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [auditLogs, setAuditLogs] = useState([]);
@@ -20,6 +20,30 @@ export default function ArchivesView({ cases = [], onSelectCase, onRefresh }) {
   useEffect(() => {
     fetchAudit();
   }, []);
+
+  const handleDeleteArchivedCase = async (caseRef) => {
+    if (!confirm(`Are you certain you wish to permanently purge Case ${caseRef} from Bureau Archives? This will permanently erase all associated records from the database.`)) {
+      return;
+    }
+    bureauAudio.cameraShutter();
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(caseRef)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        if (typeof onCaseDeleted === 'function') {
+          onCaseDeleted(caseRef);
+        } else if (typeof onRefresh === 'function') {
+          onRefresh(caseRef);
+        }
+        fetchAudit();
+      } else {
+        alert(data.error || 'Failed to delete archived case');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error connecting to bureau server');
+    }
+  };
 
   const handleReopenCase = async (caseRef) => {
     bureauAudio.conclaveChime();
@@ -116,15 +140,24 @@ export default function ArchivesView({ cases = [], onSelectCase, onRefresh }) {
                 <span className="text-[9px] font-elite text-[#856545]">
                   {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Historical'}
                 </span>
-                <button
-                  onClick={() => handleReopenCase(c.case_ref)}
-                  disabled={reopeningRef === c.case_ref}
-                  className="western-btn-gold text-[10px] py-1 px-3 flex items-center gap-1 font-bold shadow"
-                  title="Unseal archived case and restore to Active Bureau Dossier Ledger"
-                >
-                  <RotateCcw size={11} className={reopeningRef === c.case_ref ? 'animate-spin' : ''} />
-                  <span>{reopeningRef === c.case_ref ? 'Unsealing...' : '↺ Re-open Case'}</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDeleteArchivedCase(c.case_ref)}
+                    className="p-1 text-red-800 hover:text-red-950 transition-colors"
+                    title="Permanently Delete Case from Database"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                  <button
+                    onClick={() => handleReopenCase(c.case_ref)}
+                    disabled={reopeningRef === c.case_ref}
+                    className="western-btn-gold text-[10px] py-1 px-3 flex items-center gap-1 font-bold shadow"
+                    title="Unseal archived case and restore to Active Bureau Dossier Ledger"
+                  >
+                    <RotateCcw size={11} className={reopeningRef === c.case_ref ? 'animate-spin' : ''} />
+                    <span>{reopeningRef === c.case_ref ? 'Unsealing...' : '↺ Re-open Case'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}

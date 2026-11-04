@@ -175,11 +175,22 @@ export function initDatabase() {
   try {
     db.exec(`ALTER TABLE cases ADD COLUMN conclave_count INTEGER DEFAULT 0;`);
   } catch (e) {}
+  try {
+    db.exec(`ALTER TABLE cases ADD COLUMN created_by TEXT DEFAULT 'COMMAND';`);
+  } catch (e) {}
 
-  // Only seed dummy cases if explicitly requested via environment variable
-  if (process.env.SEED_DUMMY_CASES === 'true') {
-    seedDefaultData();
-  }
+  // Automatically purge any legacy inbuilt/dummy cases so database is strictly user-driven
+  try {
+    const dummyCases = db.prepare("SELECT case_ref FROM cases WHERE title LIKE '%The Vanishing Ledger%' OR title LIKE '%The Silvercrest Gala%'").all();
+    for (const d of dummyCases) {
+      db.prepare('DELETE FROM evidence WHERE case_ref = ?').run(d.case_ref);
+      db.prepare('DELETE FROM clues WHERE case_ref = ?').run(d.case_ref);
+      db.prepare('DELETE FROM deliberations WHERE case_ref = ?').run(d.case_ref);
+      db.prepare('DELETE FROM reports WHERE case_ref = ?').run(d.case_ref);
+      db.prepare('DELETE FROM audit_trail WHERE case_ref = ?').run(d.case_ref);
+      db.prepare('DELETE FROM cases WHERE case_ref = ?').run(d.case_ref);
+    }
+  } catch (e) {}
 }
 
 function seedDefaultData() {
